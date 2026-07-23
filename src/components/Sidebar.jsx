@@ -1,28 +1,34 @@
 import { NavLink } from 'react-router-dom'
 
 const links = [
-  { path: '/', label: 'Dashboard' },
-  { path: '/clients', label: 'Clients' },
-  { path: '/proposals', label: 'Proposals' },
-  { path: '/followups', label: 'Follow-ups' },
+  { path: '/', label: '🏠 Dashboard' },
+  { path: '/clients', label: '👤 Clients' },
+  { path: '/proposals', label: '📄 Proposals' },
+  { path: '/followups', label: '🔔 Follow-ups' },
 ]
 
 function Sidebar() {
   return (
-    <aside className="w-64 bg-gray-800 min-h-screen p-6 flex flex-col gap-2">
-      <h1 className="text-cyan-400 font-bold text-xl mb-6">FP Tracker</h1>
+    <aside className="w-64 min-h-screen p-4 flex flex-col gap-1" style={{ backgroundColor: '#F1F0EE' }}>
+      <div className="mb-6 px-3 pt-3">
+        <h1 className="font-bold text-lg" style={{ color: '#37352F' }}>FP Tracker</h1>
+        <p className="text-xs mt-0.5" style={{ color: '#9B9A97' }}>Freelancer CRM</p>
+      </div>
       {links.map((link) => (
         <NavLink
           key={link.path}
           to={link.path}
           end
           className={({ isActive }) =>
-            `px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               isActive
-                ? 'bg-cyan-500 text-gray-900'
-                : 'text-gray-300 hover:bg-gray-700'
+                ? 'bg-white shadow-sm font-semibold'
+                : 'hover:bg-white/60'
             }`
           }
+          style={({ isActive }) => ({
+            color: isActive ? '#37352F' : '#6B6B6B',
+          })}
         >
           {link.label}
         </NavLink>

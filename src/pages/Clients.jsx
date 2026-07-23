@@ -19,10 +19,7 @@ export default function Clients() {
 
   const handleSubmit = () => {
     const newErrors = validate()
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
-    }
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return }
     if (editId) {
       updateClient(editId, form)
       setEditId(null)
@@ -51,10 +48,11 @@ export default function Clients() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-cyan-400">Clients</h2>
+        <h2 className="text-2xl font-bold" style={{ color: '#37352F' }}>Clients</h2>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-cyan-500 hover:bg-cyan-600 text-gray-900 font-semibold px-4 py-2 rounded-lg transition-colors"
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}
         >
           + Add Client
         </button>
@@ -62,8 +60,8 @@ export default function Clients() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-gray-800 rounded-xl p-6 mb-6 border border-gray-700">
-          <h3 className="text-lg font-semibold text-white mb-4">
+        <div className="rounded-xl p-6 mb-6 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: '#37352F' }}>
             {editId ? 'Edit Client' : 'New Client'}
           </h3>
           <div className="grid grid-cols-2 gap-4">
@@ -79,24 +77,25 @@ export default function Clients() {
                   placeholder={placeholder}
                   value={form[key]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  className="w-full bg-gray-700 text-white placeholder-gray-400 px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
+                  style={{ backgroundColor: '#F7F6F3', borderColor: '#E9E9E7', color: '#37352F' }}
                 />
-                {errors[key] && (
-                  <p className="text-red-400 text-xs mt-1">{errors[key]}</p>
-                )}
+                {errors[key] && <p className="text-xs mt-1" style={{ color: '#E03E3E' }}>{errors[key]}</p>}
               </div>
             ))}
           </div>
           <div className="flex gap-3 mt-4">
             <button
               onClick={handleSubmit}
-              className="bg-cyan-500 hover:bg-cyan-600 text-gray-900 font-semibold px-5 py-2 rounded-lg transition-colors"
+              className="px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}
             >
               {editId ? 'Update' : 'Save'}
             </button>
             <button
               onClick={handleCancel}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-5 py-2 rounded-lg transition-colors"
+              className="px-5 py-2 rounded-lg text-sm font-medium border transition-colors"
+              style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7', color: '#6B6B6B' }}
             >
               Cancel
             </button>
@@ -106,30 +105,32 @@ export default function Clients() {
 
       {/* Clients List */}
       {clients.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
+        <div className="text-center py-20" style={{ color: '#9B9A97' }}>
           <p className="text-4xl mb-3">👤</p>
           <p className="text-lg font-medium">No clients yet</p>
           <p className="text-sm">Click "Add Client" to get started</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           {clients.map((client) => (
-            <div key={client.id} className="bg-gray-800 rounded-xl p-5 border border-gray-700 flex items-center justify-between">
+            <div key={client.id} className="rounded-xl p-5 border flex items-center justify-between" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
               <div>
-                <h4 className="text-white font-semibold text-lg">{client.name}</h4>
-                <p className="text-gray-400 text-sm">{client.email} • {client.phone}</p>
-                {client.company && <p className="text-cyan-400 text-sm mt-1">{client.company}</p>}
+                <h4 className="font-semibold text-lg" style={{ color: '#37352F' }}>{client.name}</h4>
+                <p className="text-sm mt-0.5" style={{ color: '#9B9A97' }}>{client.email} • {client.phone}</p>
+                {client.company && <p className="text-sm mt-1 font-medium" style={{ color: '#2383E2' }}>{client.company}</p>}
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(client)}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                  className="px-3 py-1 rounded-lg text-sm border transition-colors"
+                  style={{ backgroundColor: '#F7F6F3', borderColor: '#E9E9E7', color: '#37352F' }}
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => deleteClient(client.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                  className="px-3 py-1 rounded-lg text-sm transition-colors"
+                  style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
                 >
                   Delete
                 </button>
