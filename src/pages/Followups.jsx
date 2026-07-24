@@ -147,8 +147,10 @@ export default function Followups() {
               </div>
               <button
                 onClick={() => deleteFollowup(followup.id)}
-                className="px-3 py-1 rounded-lg text-sm"
-                style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+                className="px-3 py-1 rounded-lg text-sm transition-colors hover:opacity-80"
+                style={{ backgroundColor: '#FEE2E2', color: '#080808' }}
+                onMouseEnter={e => e.target.style.backgroundColor = '#f01111'}
+                onMouseLeave={e => e.target.style.backgroundColor = '#c88686'}
               >
                 Delete
               </button>
