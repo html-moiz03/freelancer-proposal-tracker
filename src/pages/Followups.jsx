@@ -127,7 +127,7 @@ export default function Followups() {
               key={followup.id}
               className="rounded-xl p-5 border flex items-center justify-between"
               style={isOverdue(followup.date)
-                ? { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }
+                ? { backgroundColor: '#f75454', borderColor: '#f75454' }
                 : { backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }
               }
             >
@@ -137,7 +137,7 @@ export default function Followups() {
                     {getProposalTitle(followup.proposalId)}
                   </h4>
                   {isOverdue(followup.date) && (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>
+                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#f75454', color: '#FFFFFF' }}>
                       Overdue
                     </span>
                   )}
@@ -148,7 +148,7 @@ export default function Followups() {
               <button
                 onClick={() => deleteFollowup(followup.id)}
                 className="px-3 py-1 rounded-lg text-sm"
-                style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+                style={{ backgroundColor: '#f75454', color: '#FFFFFF' }}
               >
                 Delete
               </button>
