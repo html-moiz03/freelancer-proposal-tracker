@@ -143,7 +143,7 @@ export default function Followups() {
                   )}
                 </div>
                 <p className="text-sm" style={{ color: '#9B9A97' }}>Follow-up Date: {followup.date}</p>
-                {followup.notes && <p className="text-xs mt-1" style={{ color: '#6B6B6B' }}>{followup.notes}</p>}
+                {followup.notes && <p className="text-xs mt-1" style={{ color: '#151515' }}>{followup.notes}</p>}
               </div>
               <button
                 onClick={() => deleteFollowup(followup.id)}
