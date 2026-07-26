@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom'
 
 const links = [
-  { path: '/', label: '🏠 Dashboard' },
-  { path: '/clients', label: '👤 Clients' },
-  { path: '/proposals', label: '📄 Proposals' },
-  { path: '/followups', label: '🔔 Follow-ups' },
+  { path: '/dashboard', label: '🏠 Dashboard' },
+  { path: '/dashboard/clients', label: '👤 Clients' },
+  { path: '/dashboard/proposals', label: '📄 Proposals' },
+  { path: '/dashboard/followups', label: '🔔 Follow-ups' },
 ]
 
 function Sidebar() {
