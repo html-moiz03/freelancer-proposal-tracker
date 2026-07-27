@@ -5,6 +5,7 @@ import Clients from './pages/Clients'
 import Proposals from './pages/Proposals'
 import Followups from './pages/Followups'
 import Landing from './pages/Landing'
+import Profile from './pages/Profile'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
               <Route path="/clients" element={<Clients />} />
               <Route path="/proposals" element={<Proposals />} />
               <Route path="/followups" element={<Followups />} />
+              <Route path="/profile" element={<Profile />} />
             </Routes>
           </main>
         </div>
