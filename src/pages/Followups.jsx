@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 
 export default function Followups() {
   const { followups, addFollowup, deleteFollowup, proposals } = useApp()
+  const { showToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ proposalId: '', date: '', notes: '' })
   const [errors, setErrors] = useState({})
@@ -20,6 +22,7 @@ export default function Followups() {
     const newErrors = validate()
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return }
     addFollowup(form)
+    showToast('Follow-up added successfully!', 'success')
     setForm({ proposalId: '', date: '', notes: '' })
     setErrors({})
     setShowForm(false)
@@ -146,7 +149,7 @@ export default function Followups() {
                 {followup.notes && <p className="text-xs mt-1" style={{ color: '#37352F' }}>{followup.notes}</p>}
               </div>
               <button
-                onClick={() => deleteFollowup(followup.id)}
+                onClick={() => { deleteFollowup(followup.id); showToast('Follow-up deleted!', 'error') }}
                 className="px-3 py-1 rounded-lg text-sm transition-colors hover:opacity-80"
                 style={{ backgroundColor: '#FEE2E2', color: '#080808' }}
                 onMouseEnter={e => e.target.style.backgroundColor = '#f01111'}

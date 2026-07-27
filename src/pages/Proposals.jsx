@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -13,9 +14,11 @@ const STATUS_COLORS = {
 
 export default function Proposals() {
   const { proposals, addProposal, deleteProposal, updateProposal, clients } = useApp()
+  const { showToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState(null)
   const [filterStatus, setFilterStatus] = useState('All')
+  const [search, setSearch] = useState('')
   const [form, setForm] = useState({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '' })
   const [errors, setErrors] = useState({})
 
@@ -34,8 +37,10 @@ export default function Proposals() {
     if (editId) {
       updateProposal(editId, form)
       setEditId(null)
+      showToast('Proposal updated successfully!', 'success')
     } else {
       addProposal(form)
+      showToast('Proposal added successfully!', 'success')
     }
     setForm({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '' })
     setErrors({})
@@ -59,19 +64,25 @@ export default function Proposals() {
     setShowForm(false)
   }
 
-  const filtered = filterStatus === 'All' ? proposals : proposals.filter((p) => p.status === filterStatus)
-
   const getClientName = (id) => {
     const client = clients.find((c) => c.id === Number(id))
     return client ? client.name : 'Unknown Client'
   }
+
+  const filtered = proposals
+    .filter((p) => filterStatus === 'All' || p.status === filterStatus)
+    .filter((p) =>
+      p.title.toLowerCase().includes(search.toLowerCase()) ||
+      getClientName(p.clientId).toLowerCase().includes(search.toLowerCase()) ||
+      (p.notes && p.notes.toLowerCase().includes(search.toLowerCase()))
+    )
 
   const inputStyle = { backgroundColor: '#F7F6F3', borderColor: '#E9E9E7', color: '#37352F' }
 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: '#37352F' }}>Proposals</h2>
         <button
           onClick={() => setShowForm(true)}
@@ -81,6 +92,16 @@ export default function Proposals() {
           + New Proposal
         </button>
       </div>
+
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="🔍 Search proposals..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none mb-4"
+        style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7', color: '#37352F' }}
+      />
 
       {/* Filter Pills */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -108,9 +129,7 @@ export default function Proposals() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <input
-                type="text"
-                placeholder="Proposal Title"
-                value={form.title}
+                type="text" placeholder="Proposal Title" value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
                 style={inputStyle}
@@ -133,9 +152,7 @@ export default function Proposals() {
             </div>
             <div>
               <input
-                type="number"
-                placeholder="Amount (PKR)"
-                value={form.amount}
+                type="number" placeholder="Amount (PKR)" value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
                 style={inputStyle}
@@ -144,8 +161,7 @@ export default function Proposals() {
             </div>
             <div>
               <input
-                type="date"
-                value={form.deadline}
+                type="date" value={form.deadline}
                 onChange={(e) => setForm({ ...form, deadline: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
                 style={inputStyle}
@@ -166,9 +182,7 @@ export default function Proposals() {
             </div>
             <div>
               <input
-                type="text"
-                placeholder="Notes (optional)"
-                value={form.notes}
+                type="text" placeholder="Notes (optional)" value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
                 style={inputStyle}
@@ -198,8 +212,8 @@ export default function Proposals() {
       {filtered.length === 0 ? (
         <div className="text-center py-20" style={{ color: '#9B9A97' }}>
           <p className="text-4xl mb-3">📄</p>
-          <p className="text-lg font-medium">No proposals found</p>
-          <p className="text-sm">Click "+ New Proposal" to get started</p>
+          <p className="text-lg font-medium">{search ? 'No proposals found' : 'No proposals yet'}</p>
+          <p className="text-sm">{search ? 'Try a different search term' : 'Click "+ New Proposal" to get started'}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3">
@@ -225,7 +239,7 @@ export default function Proposals() {
                   Edit
                 </button>
                 <button
-                  onClick={() => deleteProposal(proposal.id)}
+                  onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }}
                   className="px-3 py-1 rounded-lg text-sm"
                   style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
                 >

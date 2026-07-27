@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 
 export default function Clients() {
   const { clients, addClient, deleteClient, updateClient } = useApp()
+  const { showToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '' })
   const [errors, setErrors] = useState({})
+  const [search, setSearch] = useState('')
 
   const validate = () => {
     const newErrors = {}
@@ -23,8 +26,10 @@ export default function Clients() {
     if (editId) {
       updateClient(editId, form)
       setEditId(null)
+      showToast('Client updated successfully!', 'success')
     } else {
       addClient(form)
+      showToast('Client added successfully!', 'success')
     }
     setForm({ name: '', email: '', phone: '', company: '' })
     setErrors({})
@@ -44,10 +49,16 @@ export default function Clients() {
     setShowForm(false)
   }
 
+  const filteredClients = clients.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.email.toLowerCase().includes(search.toLowerCase()) ||
+    (c.company && c.company.toLowerCase().includes(search.toLowerCase()))
+  )
+
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: '#37352F' }}>Clients</h2>
         <button
           onClick={() => setShowForm(true)}
@@ -57,6 +68,16 @@ export default function Clients() {
           + Add Client
         </button>
       </div>
+
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="🔍 Search clients..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none mb-6"
+        style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7', color: '#37352F' }}
+      />
 
       {/* Form */}
       {showForm && (
@@ -104,15 +125,15 @@ export default function Clients() {
       )}
 
       {/* Clients List */}
-      {clients.length === 0 ? (
+      {filteredClients.length === 0 ? (
         <div className="text-center py-20" style={{ color: '#9B9A97' }}>
           <p className="text-4xl mb-3">👤</p>
-          <p className="text-lg font-medium">No clients yet</p>
-          <p className="text-sm">Click "Add Client" to get started</p>
+          <p className="text-lg font-medium">{search ? 'No clients found' : 'No clients yet'}</p>
+          <p className="text-sm">{search ? 'Try a different search term' : 'Click "Add Client" to get started'}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3">
-          {clients.map((client) => (
+          {filteredClients.map((client) => (
             <div key={client.id} className="rounded-xl p-5 border flex items-center justify-between" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
               <div>
                 <h4 className="font-semibold text-lg" style={{ color: '#37352F' }}>{client.name}</h4>
@@ -122,14 +143,14 @@ export default function Clients() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(client)}
-                  className="px-3 py-1 rounded-lg text-sm border transition-colors"
+                  className="px-3 py-1 rounded-lg text-sm border"
                   style={{ backgroundColor: '#F7F6F3', borderColor: '#E9E9E7', color: '#37352F' }}
                 >
                   Edit
                 </button>
                 <button
-                  onClick={() => deleteClient(client.id)}
-                  className="px-3 py-1 rounded-lg text-sm transition-colors"
+                  onClick={() => { deleteClient(client.id); showToast('Client deleted!', 'error') }}
+                  className="px-3 py-1 rounded-lg text-sm"
                   style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
                 >
                   Delete
