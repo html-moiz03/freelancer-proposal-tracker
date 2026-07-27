@@ -12,7 +12,7 @@ function Sidebar() {
   const initials = session.name ? session.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'FP'
 
   return (
-    <aside className="w-64 min-h-screen p-4 flex flex-col gap-1" style={{ backgroundColor: '#F1F0EE' }}>
+    <aside className="w-64 p-4 flex flex-col gap-1" style={{ backgroundColor: '#F1F0EE', height: '100vh', position: 'sticky', top: 0 }}>
       <div className="mb-6 px-3 pt-3">
         <h1 className="font-bold text-lg" style={{ color: '#37352F' }}>FP Tracker</h1>
         <p className="text-xs mt-0.5" style={{ color: '#9B9A97' }}>Freelancer CRM</p>
@@ -35,7 +35,7 @@ function Sidebar() {
       ))}
 
       {/* Profile at bottom */}
-      <div className="mt-auto pt-4 border-t" style={{ borderColor: '#E9E9E7' }}>
+      <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #E9E9E7' }}>
         <NavLink
           to="/dashboard/profile"
           className={({ isActive }) =>

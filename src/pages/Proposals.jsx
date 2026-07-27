@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
+import FancyButton from '../components/FancyButton'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -84,13 +85,7 @@ export default function Proposals() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: '#37352F' }}>Proposals</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}
-        >
-          + New Proposal
-        </button>
+        <FancyButton onClick={() => setShowForm(true)}>+ Add Client</FancyButton>
       </div>
 
       {/* Search */}
