@@ -1,4 +1,5 @@
 import { useApp } from '../context/AppContext'
+import { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -18,6 +19,9 @@ export default function Dashboard() {
   const { clients, proposals, followups } = useApp()
 
   const today = new Date().toISOString().split('T')[0]
+  const [revenueGoal, setRevenueGoal] = useState(() => {
+    return Number(localStorage.getItem('fpt_revenue_goal')) || 100000
+  })
 
   const totalProposals = proposals.length
   const wonProposals = proposals.filter((p) => p.status === 'Won').length
@@ -73,6 +77,49 @@ export default function Dashboard() {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6" style={{ color: '#37352F' }}>Dashboard</h2>
+
+      {/* Revenue Goal Tracker */}
+      <div className="rounded-xl p-5 border mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-semibold" style={{ color: '#37352F' }}>Monthly Revenue Goal</h3>
+            <p className="text-xs mt-0.5" style={{ color: '#9B9A97' }}>Track your earnings progress</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium" style={{ color: '#9B9A97' }}>Goal (PKR)</span>
+            <input
+              type="number"
+              value={revenueGoal}
+              onChange={(e) => {
+                setRevenueGoal(Number(e.target.value))
+                localStorage.setItem('fpt_revenue_goal', e.target.value)
+              }}
+              className="text-sm font-semibold px-3 py-1 rounded-lg border focus:outline-none w-32"
+              style={{ borderColor: '#E9E9E7', color: '#37352F', backgroundColor: '#F7F6F3' }}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <div style={{ backgroundColor: '#F1F0EE', borderRadius: '99px', height: '10px', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                borderRadius: '99px',
+                width: `${Math.min(revenueGoal > 0 ? (totalRevenue / revenueGoal) * 100 : 0, 100)}%`,
+                background: 'linear-gradient(135deg, #4F46E5, #7c3aed)',
+                transition: 'width 0.5s ease'
+              }} />
+            </div>
+          </div>
+          <span className="text-sm font-bold" style={{ color: '#4F46E5', minWidth: '40px', textAlign: 'right' }}>
+            {revenueGoal > 0 ? Math.min(Math.round((totalRevenue / revenueGoal) * 100), 100) : 0}%
+          </span>
+        </div>
+        <div className="flex justify-between mt-2">
+          <span className="text-xs" style={{ color: '#9B9A97' }}>PKR {totalRevenue.toLocaleString()} earned</span>
+          <span className="text-xs" style={{ color: '#9B9A97' }}>Goal: PKR {revenueGoal.toLocaleString()}</span>
+        </div>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-4 mb-8">
