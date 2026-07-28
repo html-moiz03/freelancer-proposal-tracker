@@ -11,10 +11,10 @@ export default function Landing() {
 
   useEffect(() => {
     const user = localStorage.getItem('fpt_session')
-    if (user) navigate('/')
+    if (user) navigate('/dashboard')
     setTimeout(() => setLogoVisible(true), 100)
     setTimeout(() => setFormVisible(true), 400)
-  }, [])
+  }, [navigate])
 
   const validate = () => {
     const e = {}
