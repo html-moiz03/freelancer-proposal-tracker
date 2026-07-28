@@ -17,6 +17,7 @@ export default function Clients() {
     if (!form.name.trim()) newErrors.name = 'Name is required'
     if (!form.email.trim()) newErrors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Email is invalid'
+    else if (clients.some((c) => c.email === form.email && c.id !== editId)) newErrors.email = 'A client with this email already exists'
     if (!form.phone.trim()) newErrors.phone = 'Phone is required'
     return newErrors
   }

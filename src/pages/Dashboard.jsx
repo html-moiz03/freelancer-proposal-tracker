@@ -1,4 +1,18 @@
 import { useApp } from '../context/AppContext'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from 'recharts'
+
+const STATUS_COLORS_PIE = {
+  Draft: '#9B9A97',
+  Sent: '#3B82F6',
+  'In Review': '#F59E0B',
+  Won: '#10B981',
+  Lost: '#EF4444',
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export default function Dashboard() {
   const { clients, proposals, followups } = useApp()
@@ -21,6 +35,21 @@ export default function Dashboard() {
     { label: 'Revenue (PKR)', value: totalRevenue.toLocaleString(), color: '#0F9B6E' },
     { label: 'Overdue Follow-ups', value: overdueFollowups, color: '#E03E3E' },
   ]
+
+  // Bar chart data — proposals per month
+  const barData = MONTHS.map((month, i) => ({
+    month,
+    proposals: proposals.filter((p) => {
+      const d = new Date(p.deadline)
+      return d.getMonth() === i
+    }).length
+  }))
+
+  // Pie chart data — status breakdown
+  const statusCounts = ['Draft', 'Sent', 'In Review', 'Won', 'Lost'].map((status) => ({
+    name: status,
+    value: proposals.filter((p) => p.status === status).length
+  })).filter((d) => d.value > 0)
 
   const recentProposals = [...proposals].reverse().slice(0, 5)
   const upcomingFollowups = followups
@@ -55,6 +84,69 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Charts Row */}
+      <div className="grid grid-cols-2 gap-6 mb-8">
+
+        {/* Bar Chart */}
+        <div className="rounded-xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
+          <h3 className="font-semibold mb-4" style={{ color: '#37352F' }}>Proposals by Month</h3>
+          {proposals.length === 0 ? (
+            <div className="flex items-center justify-center h-40" style={{ color: '#9B9A97' }}>
+              <p className="text-sm">No proposal data yet</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F0EE" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9B9A97' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#9B9A97' }} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #E9E9E7', fontSize: '12px' }}
+                />
+                <Bar dataKey="proposals" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Pie Chart */}
+        <div className="rounded-xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
+          <h3 className="font-semibold mb-4" style={{ color: '#37352F' }}>Proposal Status Breakdown</h3>
+          {statusCounts.length === 0 ? (
+            <div className="flex items-center justify-center h-40" style={{ color: '#9B9A97' }}>
+              <p className="text-sm">No proposal data yet</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={statusCounts}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {statusCounts.map((entry) => (
+                    <Cell key={entry.name} fill={STATUS_COLORS_PIE[entry.name]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #E9E9E7', fontSize: '12px' }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: '12px' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Activity Row */}
       <div className="grid grid-cols-2 gap-6">
         {/* Recent Proposals */}
         <div className="rounded-xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
