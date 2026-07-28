@@ -70,6 +70,21 @@ export default function Proposals() {
     return client ? client.name : 'Unknown Client'
   }
 
+  const isExpiringSoon = (deadline, status) => {
+    if (status === 'Won' || status === 'Lost') return false
+    const today = new Date()
+    const deadlineDate = new Date(deadline)
+    const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24))
+    return diffDays <= 3 && diffDays >= 0
+  }
+
+  const isExpired = (deadline, status) => {
+    if (status === 'Won' || status === 'Lost') return false
+    const today = new Date()
+    const deadlineDate = new Date(deadline)
+    return deadlineDate < today
+  }
+
   const filtered = proposals
     .filter((p) => filterStatus === 'All' || p.status === filterStatus)
     .filter((p) =>
@@ -85,7 +100,7 @@ export default function Proposals() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: '#37352F' }}>Proposals</h2>
-        <FancyButton onClick={() => setShowForm(true)}>+ Add Client</FancyButton>
+        <FancyButton onClick={() => setShowForm(true)}>+ New Proposal</FancyButton>
       </div>
 
       {/* Search */}
@@ -215,11 +230,21 @@ export default function Proposals() {
           {filtered.map((proposal) => (
             <div key={proposal.id} className="rounded-xl p-5 border flex items-center justify-between" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
               <div>
-                <div className="flex items-center gap-3 mb-1">
+                <div className="flex items-center gap-3 mb-1 flex-wrap">
                   <h4 className="font-semibold" style={{ color: '#37352F' }}>{proposal.title}</h4>
                   <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[proposal.status].bg, color: STATUS_COLORS[proposal.status].color }}>
                     {proposal.status}
                   </span>
+                  {isExpiringSoon(proposal.deadline, proposal.status) && (
+                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+                      ⚠ Expiring Soon
+                    </span>
+                  )}
+                  {isExpired(proposal.deadline, proposal.status) && (
+                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>
+                      ⚠ Deadline Passed
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm" style={{ color: '#9B9A97' }}>{getClientName(proposal.clientId)} • PKR {Number(proposal.amount).toLocaleString()}</p>
                 <p className="text-xs mt-1" style={{ color: '#9B9A97' }}>Deadline: {proposal.deadline}</p>
