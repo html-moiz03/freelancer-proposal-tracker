@@ -4,9 +4,10 @@ import { useToast } from '../context/ToastContext'
 import FancyButton from '../components/FancyButton'
 
 export default function Followups() {
-  const { followups, addFollowup, deleteFollowup, proposals } = useApp()
+  const { followups, addFollowup, deleteFollowup, updateFollowup, proposals } = useApp()
   const { showToast } = useToast()
   const [showForm, setShowForm] = useState(false)
+  const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ proposalId: '', date: '', notes: '' })
   const [errors, setErrors] = useState({})
 
@@ -22,16 +23,29 @@ export default function Followups() {
   const handleSubmit = () => {
     const newErrors = validate()
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return }
-    addFollowup(form)
-    showToast('Follow-up added successfully!', 'success')
+    if (editId) {
+      updateFollowup(editId, form)
+      showToast('Follow-up updated successfully!', 'success')
+    } else {
+      addFollowup(form)
+      showToast('Follow-up added successfully!', 'success')
+    }
     setForm({ proposalId: '', date: '', notes: '' })
     setErrors({})
+    setEditId(null)
     setShowForm(false)
+  }
+
+  const handleEdit = (followup) => {
+    setForm({ proposalId: followup.proposalId, date: followup.date, notes: followup.notes || '' })
+    setEditId(followup.id)
+    setShowForm(true)
   }
 
   const handleCancel = () => {
     setForm({ proposalId: '', date: '', notes: '' })
     setErrors({})
+    setEditId(null)
     setShowForm(false)
   }
 
@@ -49,13 +63,13 @@ export default function Followups() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold" style={{ color: '#37352F' }}>Follow-ups</h2>
-        <FancyButton onClick={() => setShowForm(true)}>+ Add Client</FancyButton>
+        <FancyButton onClick={() => { setEditId(null); setForm({ proposalId: '', date: '', notes: '' }); setShowForm(true) }}>+ Add Follow-up</FancyButton>
       </div>
 
       {/* Form */}
       {showForm && (
         <div className="rounded-xl p-6 mb-6 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: '#37352F' }}>New Follow-up</h3>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: '#37352F' }}>{editId ? 'Edit Follow-up' : 'New Follow-up'}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <select
@@ -98,7 +112,7 @@ export default function Followups() {
               className="px-5 py-2 rounded-lg text-sm font-medium"
               style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}
             >
-              Save
+              {editId ? 'Update' : 'Save'}
             </button>
             <button
               onClick={handleCancel}
@@ -143,15 +157,22 @@ export default function Followups() {
                 <p className="text-sm" style={{ color: '#37352F' }}>Follow-up Date: {followup.date}</p>
                 {followup.notes && <p className="text-xs mt-1" style={{ color: '#37352F' }}>{followup.notes}</p>}
               </div>
-              <button
-                onClick={() => { deleteFollowup(followup.id); showToast('Follow-up deleted!', 'error') }}
-                className="px-3 py-1 rounded-lg text-sm transition-colors hover:opacity-80"
-                style={{ backgroundColor: '#FEE2E2', color: '#080808' }}
-                onMouseEnter={e => e.target.style.backgroundColor = '#f01111'}
-                onMouseLeave={e => e.target.style.backgroundColor = '#c88686'}
-              >
-                Delete
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEdit(followup)}
+                  className="px-3 py-1 rounded-lg text-sm border"
+                  style={{ backgroundColor: '#F7F6F3', borderColor: '#E9E9E7', color: '#37352F' }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => { deleteFollowup(followup.id); showToast('Follow-up deleted!', 'error') }}
+                  className="delete-btn px-3 py-1 rounded-lg text-sm"
+                  style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>

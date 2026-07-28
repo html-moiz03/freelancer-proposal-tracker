@@ -146,7 +146,7 @@ export default function Clients() {
                 </button>
                 <button
                   onClick={() => { deleteClient(client.id); showToast('Client deleted!', 'error') }}
-                  className="px-3 py-1 rounded-lg text-sm"
+                  className="delete-btn px-3 py-1 rounded-lg text-sm"
                   style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
                 >
                   Delete

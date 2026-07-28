@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+/* Hover effects for Edit and Delete buttons */
+button {
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  opacity: 0.85;
+}
+
+button:active {
+  transform: translateY(0px);
+  opacity: 1;
+}
+
+/* Delete button hover — turns red */
+.delete-btn {
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background-color: #EF4444 !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+}
+
+.delete-btn:active {
+  transform: translateY(0px);
+}
+
 body {
     background-color: #F7F6F3;
     color: #37352F;

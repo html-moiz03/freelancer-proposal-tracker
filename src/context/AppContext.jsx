@@ -62,11 +62,15 @@ export function AppProvider({ children }) {
     setFollowups(followups.filter((f) => f.id !== id))
   }
 
+  const updateFollowup = (id, updated) => {
+    setFollowups(followups.map((f) => (f.id === id ? { ...f, ...updated } : f)))
+  }
+
   return (
     <AppContext.Provider value={{
       clients, addClient, deleteClient, updateClient,
       proposals, addProposal, deleteProposal, updateProposal,
-      followups, addFollowup, deleteFollowup,
+      followups, addFollowup, deleteFollowup, updateFollowup,
     }}>
       {children}
     </AppContext.Provider>

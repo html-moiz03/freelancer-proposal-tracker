@@ -259,8 +259,8 @@ export default function Proposals() {
                   Edit
                 </button>
                 <button
-                  onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }}
-                  className="px-3 py-1 rounded-lg text-sm"
+                  onClick={() => { deleteClient(client.id); showToast('Client deleted!', 'error') }}
+                  className="delete-btn px-3 py-1 rounded-lg text-sm"
                   style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
                 >
                   Delete
