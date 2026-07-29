@@ -1,6 +1,62 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+function AnimatedStatCard({ stat, delay }) {
+  const [count, setCount] = useState(0)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(true)
+      let start = 0
+      const duration = 1500
+      const step = Math.ceil(stat.value / (duration / 16))
+      const counter = setInterval(() => {
+        start += step
+        if (start >= stat.value) {
+          setCount(stat.value)
+          clearInterval(counter)
+        } else {
+          setCount(start)
+        }
+      }, 16)
+    }, delay + 600)
+    return () => clearTimeout(timer)
+  }, [delay, stat.value])
+
+  return (
+    <div style={{
+      width: '200px',
+      borderRadius: '120px 120px 20px 20px',
+      backgroundColor: stat.color,
+      padding: '40px 20px 30px',
+      textAlign: 'center',
+      transform: visible ? 'translateY(0)' : 'translateY(40px)',
+      opacity: visible ? 1 : 0,
+      transition: `all 0.7s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
+    }}>
+      <div style={{
+        fontSize: '48px',
+        fontWeight: '800',
+        color: stat.accent,
+        lineHeight: 1,
+        marginBottom: '8px',
+        fontFamily: 'Plus Jakarta Sans, sans-serif'
+      }}>
+        {stat.suffix === '+' ? `${count}+` : `${count}%`}
+      </div>
+      <div style={{
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#374151',
+        lineHeight: 1.4
+      }}>
+        {stat.label}
+      </div>
+    </div>
+  )
+}
+
 export default function Landing() {
   const navigate = useNavigate()
   const [isLogin, setIsLogin] = useState(false)
@@ -248,6 +304,24 @@ export default function Landing() {
                 </p>
             </div>
           </div>
+        </div>
+
+        {/* Status Section */}
+        <div style={{
+          position: 'relative', zIndex: 1,
+          padding: '40px 60px',
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '24px',
+          backgroundColor: '#F7F6F3',
+        }}>
+          {[
+            { value: 500, suffix: '+', label: 'Proposals Tracked', color: '#EDE9FE', accent: '#7c3aed' },
+            { value: 98, suffix: '%', label: 'Client Satisfaction', color: '#DBEAFE', accent: '#4F46E5' },
+            { value: 100, suffix: '%', label: 'Free Forever', color: '#FCE7F3', accent: '#db2777' },
+          ].map((stat, i) => (
+            <AnimatedStatCard key={stat.label} stat={stat} delay={i * 200} />
+          ))}
         </div>
 
         <footer className="footer">
