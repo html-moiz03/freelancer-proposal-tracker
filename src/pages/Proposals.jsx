@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
+import { exportProposalPDF } from '../utils/exportPDF'
+import { exportProposalsCSV } from '../utils/exportCSV'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -98,7 +100,16 @@ export default function Proposals() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: titleColor }}>Proposals</h2>
-        <FancyButton onClick={() => setShowForm(true)}>+ New Proposal</FancyButton>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => { exportProposalsCSV(proposals, clients); showToast('Proposals exported!', 'success') }}
+            className="px-3 py-2 rounded-lg text-sm font-medium border"
+            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
+          >
+            📥 Export CSV
+          </button>
+          <FancyButton onClick={() => setShowForm(true)}>+ New Proposal</FancyButton>
+        </div>
       </div>
 
       <input type="text" placeholder="🔍 Search proposals..." value={search}
@@ -185,6 +196,13 @@ export default function Proposals() {
                 {proposal.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{proposal.notes}</p>}
               </div>
               <div className="flex gap-2">
+                <button
+                  onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported', 'success') }}
+                  className="px-3 py-1 rounded-lg text-sm border"
+                  style={{ backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', color: '#065F46' }}
+                >
+                  📄 PDF
+                </button>
                 <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
                 <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="delete-btn px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
               </div>

@@ -7,6 +7,7 @@ import Followups from './pages/Followups'
 import Landing from './pages/Landing'
 import Profile from './pages/Profile'
 import { useTheme } from './context/ThemeContext'
+import ClientDetail from './pages/ClientDetail'
 
 function App() {
   const { isDark } = useTheme()
@@ -23,6 +24,7 @@ function App() {
               <Route path="/proposals" element={<Proposals />} />
               <Route path="/followups" element={<Followups />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/clients/:id" element={<ClientDetail />} />
             </Routes>
           </main>
         </div>

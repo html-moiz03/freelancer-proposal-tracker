@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
+import { exportClientsCSV } from '../utils/exportCSV'
+import { useNavigate } from 'react-router-dom'
 
 export default function Clients() {
   const { clients, addClient, deleteClient, updateClient } = useApp()
@@ -13,6 +15,7 @@ export default function Clients() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '' })
   const [errors, setErrors] = useState({})
   const [search, setSearch] = useState('')
+  const navigate = useNavigate()
 
   const card = { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
   const titleColor = isDark ? '#ffffff' : '#37352F'
@@ -68,7 +71,16 @@ export default function Clients() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: titleColor }}>Clients</h2>
-        <FancyButton onClick={() => setShowForm(true)}>+ Add Client</FancyButton>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => { exportClientsCSV(clients); showToast('Clients exported!', 'success') }}
+            className="px-3 py-2 rounded-lg text-sm font-medium border"
+            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
+          >
+            📥 Export CSV
+          </button>
+          <FancyButton onClick={() => setShowForm(true)}>+ Add Client</FancyButton>
+        </div>
       </div>
 
       <input
@@ -110,7 +122,13 @@ export default function Clients() {
           {filteredClients.map((client) => (
             <div key={client.id} className="rounded-xl p-5 border flex items-center justify-between" style={card}>
               <div>
-                <h4 className="font-semibold text-lg" style={{ color: titleColor }}>{client.name}</h4>
+                <h4
+                  className="font-semibold text-lg cursor-pointer hover:underline"
+                  style={{ color: '#4F46E5'}}
+                  onClick={() => navigate(`/dashboard/clients/${client.id}`)}
+                >
+                  {client.name}
+                </h4>
                 <p className="text-sm mt-0.5" style={{ color: subColor }}>{client.email} • {client.phone}</p>
                 {client.company && <p className="text-sm mt-1 font-medium" style={{ color: '#2383E2' }}>{client.company}</p>}
               </div>
