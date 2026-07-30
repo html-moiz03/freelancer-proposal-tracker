@@ -1,17 +1,23 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
+import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
 
 export default function Followups() {
   const { followups, addFollowup, deleteFollowup, updateFollowup, proposals } = useApp()
   const { showToast } = useToast()
+  const { isDark } = useTheme()
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ proposalId: '', date: '', notes: '' })
   const [errors, setErrors] = useState({})
 
   const today = new Date().toISOString().split('T')[0]
+  const card = { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
+  const titleColor = isDark ? '#ffffff' : '#37352F'
+  const subColor = isDark ? '#94a3b8' : '#9B9A97'
+  const inputStyle = { backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }
 
   const validate = () => {
     const newErrors = {}
@@ -56,78 +62,41 @@ export default function Followups() {
 
   const isOverdue = (date) => date < today
 
-  const inputStyle = { backgroundColor: '#F7F6F3', borderColor: '#E9E9E7', color: '#37352F' }
-
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold" style={{ color: '#37352F' }}>Follow-ups</h2>
+        <h2 className="text-2xl font-bold" style={{ color: titleColor }}>Follow-ups</h2>
         <FancyButton onClick={() => { setEditId(null); setForm({ proposalId: '', date: '', notes: '' }); setShowForm(true) }}>+ Add Follow-up</FancyButton>
       </div>
 
-      {/* Form */}
       {showForm && (
-        <div className="rounded-xl p-6 mb-6 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }}>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: '#37352F' }}>{editId ? 'Edit Follow-up' : 'New Follow-up'}</h3>
+        <div className="rounded-xl p-6 mb-6 border" style={card}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: titleColor }}>{editId ? 'Edit Follow-up' : 'New Follow-up'}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <select
-                value={form.proposalId}
-                onChange={(e) => setForm({ ...form, proposalId: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
-                style={inputStyle}
-              >
+              <select value={form.proposalId} onChange={(e) => setForm({ ...form, proposalId: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle}>
                 <option value="">Select Proposal</option>
-                {proposals.map((p) => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
-                ))}
+                {proposals.map((p) => (<option key={p.id} value={p.id}>{p.title}</option>))}
               </select>
               {errors.proposalId && <p className="text-xs mt-1" style={{ color: '#E03E3E' }}>{errors.proposalId}</p>}
             </div>
             <div>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
-                style={inputStyle}
-              />
+              <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle} />
               {errors.date && <p className="text-xs mt-1" style={{ color: '#E03E3E' }}>{errors.date}</p>}
             </div>
             <div className="col-span-2">
-              <input
-                type="text"
-                placeholder="Notes (optional)"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none"
-                style={inputStyle}
-              />
+              <input type="text" placeholder="Notes (optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle} />
             </div>
           </div>
           <div className="flex gap-3 mt-4">
-            <button
-              onClick={handleSubmit}
-              className="px-5 py-2 rounded-lg text-sm font-medium"
-              style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}
-            >
-              {editId ? 'Update' : 'Save'}
-            </button>
-            <button
-              onClick={handleCancel}
-              className="px-5 py-2 rounded-lg text-sm font-medium border"
-              style={{ backgroundColor: '#FFFFFF', borderColor: '#E9E9E7', color: '#6B6B6B' }}
-            >
-              Cancel
-            </button>
+            <button onClick={handleSubmit} className="px-5 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}>{editId ? 'Update' : 'Save'}</button>
+            <button onClick={handleCancel} className="px-5 py-2 rounded-lg text-sm font-medium border" style={{ backgroundColor: 'transparent', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: subColor }}>Cancel</button>
           </div>
         </div>
       )}
 
-      {/* Follow-ups List */}
       {followups.length === 0 ? (
-        <div className="text-center py-20" style={{ color: '#9B9A97' }}>
+        <div className="text-center py-20" style={{ color: subColor }}>
           <p className="text-4xl mb-3">🔔</p>
           <p className="text-lg font-medium">No follow-ups yet</p>
           <p className="text-sm">Click "+ Add Follow-up" to get started</p>
@@ -135,43 +104,24 @@ export default function Followups() {
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {followups.map((followup) => (
-            <div
-              key={followup.id}
-              className="rounded-xl p-5 border flex items-center justify-between"
+            <div key={followup.id} className="rounded-xl p-5 border flex items-center justify-between"
               style={isOverdue(followup.date)
-                ? { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }
-                : { backgroundColor: '#FFFFFF', borderColor: '#E9E9E7' }
-              }
-            >
+                ? { backgroundColor: isDark ? '#2a1a1a' : '#FEE2E2', borderColor: isDark ? '#3a2a2a' : '#FECACA' }
+                : card
+              }>
               <div>
                 <div className="flex items-center gap-3 mb-1">
-                  <h4 className="font-semibold" style={{ color: '#37352F' }}>
-                    {getProposalTitle(followup.proposalId)}
-                  </h4>
+                  <h4 className="font-semibold" style={{ color: titleColor }}>{getProposalTitle(followup.proposalId)}</h4>
                   {isOverdue(followup.date) && (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>
-                      Overdue
-                    </span>
+                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Overdue</span>
                   )}
                 </div>
-                <p className="text-sm" style={{ color: '#37352F' }}>Follow-up Date: {followup.date}</p>
-                {followup.notes && <p className="text-xs mt-1" style={{ color: '#37352F' }}>{followup.notes}</p>}
+                <p className="text-sm" style={{ color: titleColor }}>Follow-up Date: {followup.date}</p>
+                {followup.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{followup.notes}</p>}
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(followup)}
-                  className="px-3 py-1 rounded-lg text-sm border"
-                  style={{ backgroundColor: '#F7F6F3', borderColor: '#E9E9E7', color: '#37352F' }}
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => { deleteFollowup(followup.id); showToast('Follow-up deleted!', 'error') }}
-                  className="delete-btn px-3 py-1 rounded-lg text-sm"
-                  style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
-                >
-                  Delete
-                </button>
+                <button onClick={() => handleEdit(followup)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
+                <button onClick={() => { deleteFollowup(followup.id); showToast('Follow-up deleted!', 'error') }} className="delete-btn px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
               </div>
             </div>
           ))}
