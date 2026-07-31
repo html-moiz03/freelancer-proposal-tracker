@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
+import EmptyState from '../components/EmptyState'
 
 export default function Followups() {
   const { followups, addFollowup, deleteFollowup, updateFollowup, proposals } = useApp()
@@ -96,11 +97,14 @@ export default function Followups() {
       )}
 
       {followups.length === 0 ? (
-        <div className="text-center py-20" style={{ color: subColor }}>
-          <p className="text-4xl mb-3">🔔</p>
-          <p className="text-lg font-medium">No follow-ups yet</p>
-          <p className="text-sm">Click "+ Add Follow-up" to get started</p>
-        </div>
+        <EmptyState
+          icon="🔔"
+          title="No follow-ups yet"
+          description="Add follow-up reminders to your proposals so you never miss a chance to close a deal."
+          actionLabel="+ Add Follow-up"
+          onAction={() => setShowForm(true)}
+          isDark={isDark}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {followups.map((followup) => (

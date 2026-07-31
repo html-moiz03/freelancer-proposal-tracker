@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
 import { exportClientsCSV } from '../utils/exportCSV'
 import { useNavigate } from 'react-router-dom'
+import EmptyState from '../components/EmptyState'
 
 export default function Clients() {
   const { clients, addClient, deleteClient, updateClient } = useApp()
@@ -112,11 +113,14 @@ export default function Clients() {
       )}
 
       {filteredClients.length === 0 ? (
-        <div className="text-center py-20" style={{ color: subColor }}>
-          <p className="text-4xl mb-3">👤</p>
-          <p className="text-lg font-medium">{search ? 'No clients found' : 'No clients yet'}</p>
-          <p className="text-sm">{search ? 'Try a different search term' : 'Click "Add Client" to get started'}</p>
-        </div>
+        <EmptyState
+          icon="👤"
+          title={search ? 'No clients found' : 'No clients yet'}
+          description={search ? 'Try a different search term or clear the search.' :'Add your first client to get started tracking proposals.'}
+          actionLabel={search ? null : '+ Add Client'}
+          onAction={search ? null : () => setShowForm(true)}
+          isDark={isDark}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {filteredClients.map((client) => (

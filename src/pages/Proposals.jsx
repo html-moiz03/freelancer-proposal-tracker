@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
 import { exportProposalPDF } from '../utils/exportPDF'
 import { exportProposalsCSV } from '../utils/exportCSV'
+import EmptyState from '../components/EmptyState'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -171,11 +172,14 @@ export default function Proposals() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="text-center py-20" style={{ color: subColor }}>
-          <p className="text-4xl mb-3">📄</p>
-          <p className="text-lg font-medium">{search ? 'No proposals found' : 'No proposals yet'}</p>
-          <p className="text-sm">{search ? 'Try a different search term' : 'Click "+ New Proposal" to get started'}</p>
-        </div>
+        <EmptyState
+          icon="📄"
+          title={search ? 'No proposals found' : 'No proposals yet'}
+          description={search ? 'Try a different search term or clear the search.' : 'Create your first proposal to start tracking deals.'}
+          actionLabel={search ? null : '+ New Proposal'}
+          onAction={search ? null : () => setShowForm(true)}
+          isDark={isDark}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {filtered.map((proposal) => (
