@@ -17,7 +17,7 @@ function App() {
       <Route path="/dashboard/*" element={
         <div className="flex min-h-screen" style={{ backgroundColor: isDark ? '#1a1a1a' : '#F7F6F3' }}>
           <Sidebar />
-          <main className="flex-1 p-8" style={{ color: '#37352F' }}>
+          <main className="flex-1 p-4 md:p-8 pt-16 md:pt-8 w-full" style={{ color: isDark ? '#ffffff' : '#37352F', minWidth: 0 }}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />
