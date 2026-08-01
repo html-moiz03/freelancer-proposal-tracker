@@ -7,6 +7,7 @@ const links = [
   { path: '/dashboard/clients', label: '👤 Clients' },
   { path: '/dashboard/proposals', label: '📄 Proposals' },
   { path: '/dashboard/followups', label: '🔔 Follow-ups' },
+  { path: '/dashboard/kanban', label: '🗂️ Kanban' },
 ]
 
 function Sidebar() {

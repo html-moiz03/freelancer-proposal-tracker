@@ -8,6 +8,7 @@ import Landing from './pages/Landing'
 import Profile from './pages/Profile'
 import { useTheme } from './context/ThemeContext'
 import ClientDetail from './pages/ClientDetail'
+import Kanban from './pages/Kanban'
 
 function App() {
   const { isDark } = useTheme()
@@ -25,6 +26,7 @@ function App() {
               <Route path="/followups" element={<Followups />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/clients/:id" element={<ClientDetail />} />
+              <Route path="/kanban" element={<Kanban />} />
             </Routes>
           </main>
         </div>
