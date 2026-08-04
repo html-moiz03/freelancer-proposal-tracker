@@ -10,7 +10,7 @@ import EmptyState from '../components/EmptyState'
 export default function Clients() {
   const { clients, addClient, deleteClient, updateClient } = useApp()
   const { showToast } = useToast()
-  const { isDark } = useTheme()
+  const { isDark, accent } = useTheme()
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '' })
@@ -70,6 +70,42 @@ export default function Clients() {
 
   return (
     <div>
+      <div style={{ position: 'relative' }}>
+
+        {/* Doodle Background */}
+        <svg style={{
+          position: 'fixed', top: 0, right: 0,
+          width: '75%', height: '100%',
+          pointerEvents: 'none', zIndex: 0, opacity: 0.4
+        }} viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+          <text x="720" y="80" fontSize="18" fill={accent} opacity="0.3">✦</text>
+          <text x="600" y="40" fontSize="12" fill={accent} opacity="0.2">✦</text>
+          <text x="750" y="300" fontSize="20" fill={accent} opacity="0.2">✦</text>
+          <text x="500" y="500" fontSize="14" fill={accent} opacity="0.2">✦</text>
+          <text x="650" y="550" fontSize="10" fill={accent} opacity="0.2">✦</text>
+          <path d="M 650 100 Q 680 80 710 100 Q 740 120 770 100" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.2"/>
+          <path d="M 550 200 Q 580 180 610 200 Q 640 220 670 200" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15"/>
+          <path d="M 700 400 Q 730 380 760 400 Q 790 420 820 400" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15"/>
+          <circle cx="720" cy="200" r="30" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15"/>
+          <circle cx="580" cy="450" r="20" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15"/>
+          <circle cx="750" cy="480" r="15" stroke={accent} strokeWidth="1" fill="none" opacity="0.1"/>
+          <text x="600" y="150" fontSize="18" fill={accent} opacity="0.15">+</text>
+          <text x="700" y="350" fontSize="16" fill={accent} opacity="0.15">+</text>
+          <text x="550" y="300" fontSize="14" fill={accent} opacity="0.1">+</text>
+          <rect x="620" y="480" width="16" height="16" rx="3" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15" transform="rotate(15 628 488)"/>
+          <rect x="740" y="150" width="14" height="14" rx="3" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15" transform="rotate(-10 747 157)"/>
+          <path d="M 580 350 L 580 390 L 570 380 M 580 390 L 590 380" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15"/>
+          <path d="M 680 250 L 720 250 L 710 240 M 720 250 L 710 260" stroke={accent} strokeWidth="1.5" fill="none" opacity="0.15"/>
+          <circle cx="630" cy="100" r="4" fill={accent} opacity="0.2"/>
+          <circle cx="655" cy="100" r="4" fill={accent} opacity="0.2"/>
+          <circle cx="680" cy="100" r="4" fill={accent} opacity="0.2"/>
+          <circle cx="700" cy="520" r="4" fill={accent} opacity="0.15"/>
+          <circle cx="725" cy="520" r="4" fill={accent} opacity="0.15"/>
+          <circle cx="750" cy="520" r="4" fill={accent} opacity="0.15"/>
+        </svg>
+
+        <div style={{ position: 'relative', zIndex: 1 }}></div>
+      </div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: titleColor }}>Clients</h2>
         <div className="flex gap-2 items-center">
@@ -128,7 +164,7 @@ export default function Clients() {
               <div>
                 <h4
                   className="font-semibold text-lg cursor-pointer hover:underline"
-                  style={{ color: '#4F46E5'}}
+                  style={{ color: accent}}
                   onClick={() => navigate(`/dashboard/clients/${client.id}`)}
                 >
                   {client.name}

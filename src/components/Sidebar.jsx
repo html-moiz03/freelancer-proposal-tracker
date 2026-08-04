@@ -24,7 +24,7 @@ function Sidebar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const sidebarBg = isDark ? '#0f0f0f' : '#F1F0EE'
+  const sidebarBg = isDark ? '#0f0f0f' : accent + '12'
   const titleColor = isDark ? '#e2e8f0' : '#37352F'
   const subColor = isDark ? '#94a3b8' : '#9B9A97'
 
@@ -113,8 +113,8 @@ function Sidebar() {
                 }`
               }
               style={({ isActive }) => ({
-                color: isActive ? (isDark ? '#ffffff' : '#37352F') : (isDark ? '#94a3b8' : '#6B6B6B'),
-                backgroundColor: isActive ? (isDark ? '#2a2a2a' : accent + '15') : 'transparent',
+                color: isActive ? accent : (isDark ? '#94a3b8' : '#6B6B6B'),
+                backgroundColor: isActive ? accent + '18' : 'transparent',
                 borderLeft: isActive ? `3px solid ${accent}` : '3px solid transparent',
               })}
             >
@@ -150,9 +150,16 @@ function Sidebar() {
                 width: '32px', height: '32px', borderRadius: '50%',
                 background: 'linear-gradient(135deg, #4F46E5, #7c3aed)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: '800', color: 'white', flexShrink: 0
+                fontSize: localStorage.getItem('fpt_avatar') ? '18px' : '12px',
+                fontWeight: '800', color: 'white', flexShrink: 0,
+                overflow: 'hidden'
               }}>
-                {initials}
+                {localStorage.getItem('fpt_custom_image')
+                  ? <img src={localStorage.getItem('fpt_custom_image')} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : localStorage.getItem('fpt_avatar')
+                  ? localStorage.getItem('fpt_avatar')
+                  : initials
+                }
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: isDark ? '#e2e8f0' : '#37352F' }}>{session.name || 'User'}</p>

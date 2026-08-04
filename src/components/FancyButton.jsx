@@ -24,8 +24,8 @@ export default function FancyButton({ onClick, children }) {
           left: 50%;
           top: 50%;
           transform: translate(-50%, -50%);
-          height: 30px;
-          width: 30px;
+          height: 20px;
+          width: 20px;
           background-color: ${accent};
           border-radius: 50%;
           transition: 0.6s ease;
@@ -37,7 +37,7 @@ export default function FancyButton({ onClick, children }) {
         .fancy-btn span:nth-child(4) { transform: translate(3.5em, 1.4em); }
         .fancy-btn span:nth-child(5) { transform: translate(3.5em, -3.8em); }
         .fancy-btn:hover span:not(.fancy-text) {
-          transform: translate(-50%, -50%) scale(4);
+          transform: translate(-50%, -50%) scale(8);
           transition: 1.5s ease;
         }
       `}</style>

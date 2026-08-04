@@ -21,7 +21,7 @@ const STATUS_COLORS = {
 export default function Proposals() {
   const { proposals, addProposal, deleteProposal, updateProposal, clients, currency } = useApp()
   const { showToast } = useToast()
-  const { isDark } = useTheme()
+  const { isDark, accent } = useTheme()
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState(null)
   const [filterStatus, setFilterStatus] = useState('All')
@@ -187,7 +187,7 @@ export default function Proposals() {
             <div key={proposal.id} className="rounded-xl p-5 border flex items-center justify-between" style={card}>
               <div>
                 <div className="flex items-center gap-3 mb-1 flex-wrap">
-                  <h4 className="font-semibold" style={{ color: titleColor }}>{proposal.title}</h4>
+                  <h4 className="font-semibold" style={{ color: accent }}>{proposal.title}</h4>
                   <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[proposal.status].bg, color: STATUS_COLORS[proposal.status].color }}>{proposal.status}</span>
                   {isExpiringSoon(proposal.deadline, proposal.status) && (
                     <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>⚠ Expiring Soon</span>

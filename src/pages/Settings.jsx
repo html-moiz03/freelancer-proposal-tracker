@@ -25,13 +25,12 @@ function Label({ children, titleColor }) {
 }
 
 export default function Settings() {
-  const { isDark, toggleTheme, updateAccent } = useTheme()
   const { showToast } = useToast()
   const { clients, proposals, followups, currency, setCurrency } = useApp()
 
   const [dateFormat, setDateFormat] = useState(localStorage.getItem('fpt_date_format') || 'YYYY-MM-DD')
   const [reminderDays, setReminderDays] = useState(localStorage.getItem('fpt_reminder_days') || '3')
-  const [accentColor, setAccentColor] = useState(localStorage.getItem('fpt_accent') || '#4F46E5')
+  const { isDark, toggleTheme, updateAccent, accent } = useTheme()
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -56,7 +55,6 @@ export default function Settings() {
   }
 
   const saveAccent = (color) => {
-    setAccentColor(color)
     updateAccent(color)
     showToast('Accent color updated!', 'success')
   }
@@ -200,15 +198,15 @@ export default function Settings() {
               style={{
                 width: '32px', height: '32px', borderRadius: '50%',
                 backgroundColor: color.value, cursor: 'pointer',
-                border: accentColor === color.value ? '3px solid #37352F' : '3px solid transparent',
-                boxShadow: accentColor === color.value ? '0 0 0 2px white, 0 0 0 4px ' + color.value : 'none',
+                border: accent === color.value ? '3px solid #37352F' : '3px solid transparent',
+                boxShadow: accent === color.value ? '0 0 0 2px white, 0 0 0 4px ' + color.value : 'none',
                 transition: 'all 0.2s'
               }}
               title={color.name}
             />
           ))}
         </div>
-        <p className="text-xs mt-2" style={{ color: subColor }}>Note: Accent color applies on next page reload</p>
+        <p className="text-xs mt-2" style={{ color: subColor }}>Changes apply instantly across the app</p>
       </div>
 
       {/* Data Management */}
