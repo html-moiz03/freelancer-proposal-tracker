@@ -161,7 +161,7 @@ npm run build
 
 **Malik Abdul Moiz Awan**
 - GitHub: [@html-moiz03](https://github.com/html-moiz03)
-- LinkedIn: [malik-abdulmoiz](www.linkedin.com/in/malik-abdul-moiz-zaheer-awan-6a9997259)
+- LinkedIn: [malik-abdulmoiz](https://www.linkedin.com/in/malik-abdul-moiz-zaheer-awan-6a9997259)
 
 ---
 
