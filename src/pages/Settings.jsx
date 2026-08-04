@@ -25,7 +25,7 @@ function Label({ children, titleColor }) {
 }
 
 export default function Settings() {
-  const { isDark, toggleTheme } = useTheme()
+  const { isDark, toggleTheme, updateAccent } = useTheme()
   const { showToast } = useToast()
   const { clients, proposals, followups, currency, setCurrency } = useApp()
 
@@ -57,7 +57,7 @@ export default function Settings() {
 
   const saveAccent = (color) => {
     setAccentColor(color)
-    localStorage.setItem('fpt_accent', color)
+    updateAccent(color)
     showToast('Accent color updated!', 'success')
   }
 

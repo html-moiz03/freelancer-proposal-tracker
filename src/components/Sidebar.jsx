@@ -14,7 +14,7 @@ const links = [
 function Sidebar() {
   const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
   const initials = session.name ? session.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'FP'
-  const { isDark, toggleTheme } = useTheme()
+  const { isDark, toggleTheme, accent } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
@@ -112,7 +112,11 @@ function Sidebar() {
                   isActive ? `${isDark ? 'bg-gray-700' : 'bg-white'} shadow-sm font-semibold` : `${isDark ? 'hover:bg-gray-700' : 'hover:bg-white/60'}`
                 }`
               }
-              style={({ isActive }) => ({ color: isActive ? (isDark ? '#ffffff' : '#37352F') : (isDark ? '#94a3b8' : '#6B6B6B') })}
+              style={({ isActive }) => ({
+                color: isActive ? (isDark ? '#ffffff' : '#37352F') : (isDark ? '#94a3b8' : '#6B6B6B'),
+                backgroundColor: isActive ? (isDark ? '#2a2a2a' : accent + '15') : 'transparent',
+                borderLeft: isActive ? `3px solid ${accent}` : '3px solid transparent',
+              })}
             >
               {link.label}
             </NavLink>
