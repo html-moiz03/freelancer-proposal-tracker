@@ -8,6 +8,7 @@ const links = [
   { path: '/dashboard/proposals', label: '📄 Proposals' },
   { path: '/dashboard/followups', label: '🔔 Follow-ups' },
   { path: '/dashboard/kanban', label: '🗂️ Kanban' },
+  { path: '/dashboard/settings', label: '⚙️ Settings' },
 ]
 
 function Sidebar() {

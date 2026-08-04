@@ -1,6 +1,7 @@
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { formatDate } from '../utils/formatDate'
 
 const COLUMNS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -13,7 +14,7 @@ const COLUMN_COLORS = {
 }
 
 export default function Kanban() {
-  const { proposals, updateProposal, clients } = useApp()
+  const { proposals, updateProposal, clients, currency } = useApp()
   const { isDark } = useTheme()
 
   const titleColor = isDark ? '#ffffff' : '#37352F'
@@ -161,7 +162,7 @@ export default function Kanban() {
                                 color: subColor,
                                 marginBottom: '4px',
                               }}>
-                                💰 PKR {Number(proposal.amount).toLocaleString()}
+                                💰 {currency} {Number(proposal.amount).toLocaleString()}
                               </p>
 
                               {/* Deadline */}
@@ -169,7 +170,7 @@ export default function Kanban() {
                                 fontSize: '11px',
                                 color: subColor,
                               }}>
-                                📅 {proposal.deadline}
+                                📅 {formatDate(proposal.deadline)}
                               </p>
                             </div>
                           )}

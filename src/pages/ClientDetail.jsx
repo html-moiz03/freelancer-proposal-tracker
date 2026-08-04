@@ -13,7 +13,7 @@ const STATUS_COLORS = {
 export default function ClientDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { clients, proposals } = useApp()
+  const { clients, proposals, currency, } = useApp()
   const { isDark } = useTheme()
 
   const client = clients.find((c) => c.id === Number(id))
@@ -84,7 +84,7 @@ export default function ClientDetail() {
       {/* Revenue Card */}
       <div className="rounded-xl p-5 border mb-6" style={card}>
         <p className="text-sm font-medium mb-1" style={{ color: titleColor }}>Total Revenue from Client</p>
-        <p className="text-3xl font-bold" style={{ color: '#0F9B6E' }}>PKR {totalRevenue.toLocaleString()}</p>
+        <p className="text-3xl font-bold" style={{ color: '#0F9B6E' }}>{currency} {totalRevenue.toLocaleString()}</p>
       </div>
 
       {/* Proposals List */}
@@ -98,7 +98,7 @@ export default function ClientDetail() {
               <div key={p.id} className="flex items-center justify-between py-3 border-b last:border-0" style={{ borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
                 <div>
                   <p className="text-sm font-medium" style={{ color: titleColor }}>{p.title}</p>
-                  <p className="text-xs mt-0.5" style={{ color: subColor }}>PKR {Number(p.amount).toLocaleString()} • Deadline: {p.deadline}</p>
+                  <p className="text-xs mt-0.5" style={{ color: subColor }}>{currency} {Number(p.amount).toLocaleString()} • Deadline: {p.deadline}</p>
                 </div>
                 <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[p.status].bg, color: STATUS_COLORS[p.status].color }}>
                   {p.status}

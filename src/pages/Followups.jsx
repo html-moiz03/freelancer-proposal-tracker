@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
 import EmptyState from '../components/EmptyState'
+import { formatDate } from '../utils/formatDate'
 
 export default function Followups() {
   const { followups, addFollowup, deleteFollowup, updateFollowup, proposals } = useApp()
@@ -62,6 +63,13 @@ export default function Followups() {
   }
 
   const isOverdue = (date) => date < today
+    const isUpcomingReminder = (date) => {
+    const reminderDays = Number(localStorage.getItem('fpt_reminder_days') || '3')
+    const followupDate = new Date(date)
+    const todayDate = new Date(today)
+    const diffDays = Math.ceil((followupDate - todayDate) / (1000 * 60 * 60 * 24))
+    return diffDays >= 0 && diffDays <= reminderDays
+  }
 
   return (
     <div>
@@ -116,11 +124,13 @@ export default function Followups() {
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <h4 className="font-semibold" style={{ color: titleColor }}>{getProposalTitle(followup.proposalId)}</h4>
-                  {isOverdue(followup.date) && (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Overdue</span>
+                  {!isOverdue(followup.date) && isUpcomingReminder(followup.date) && (
+                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+                      🔔 Reminder
+                    </span>
                   )}
                 </div>
-                <p className="text-sm" style={{ color: titleColor }}>Follow-up Date: {followup.date}</p>
+                <p className="text-sm" style={{ color: titleColor }}>Follow-up Date: {formatDate(followup.date)}</p>
                 {followup.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{followup.notes}</p>}
               </div>
               <div className="flex gap-2">

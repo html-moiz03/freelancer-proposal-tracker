@@ -6,6 +6,7 @@ import FancyButton from '../components/FancyButton'
 import { exportProposalPDF } from '../utils/exportPDF'
 import { exportProposalsCSV } from '../utils/exportCSV'
 import EmptyState from '../components/EmptyState'
+import { formatDate } from '../utils/formatDate'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -18,7 +19,7 @@ const STATUS_COLORS = {
 }
 
 export default function Proposals() {
-  const { proposals, addProposal, deleteProposal, updateProposal, clients } = useApp()
+  const { proposals, addProposal, deleteProposal, updateProposal, clients, currency } = useApp()
   const { showToast } = useToast()
   const { isDark } = useTheme()
   const [showForm, setShowForm] = useState(false)
@@ -195,8 +196,8 @@ export default function Proposals() {
                     <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>⚠ Deadline Passed</span>
                   )}
                 </div>
-                <p className="text-sm" style={{ color: subColor }}>{getClientName(proposal.clientId)} • PKR {Number(proposal.amount).toLocaleString()}</p>
-                <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {proposal.deadline}</p>
+                <p className="text-sm" style={{ color: subColor }}>{getClientName(proposal.clientId)} • {currency} {Number(proposal.amount).toLocaleString()}</p>
+                <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {formatDate(proposal.deadline)}</p>
                 {proposal.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{proposal.notes}</p>}
               </div>
               <div className="flex gap-2">

@@ -3,6 +3,10 @@ import { createContext, useContext, useState, useEffect } from 'react'
 const AppContext = createContext()
 
 export function AppProvider({ children }) {
+  const [currency, setCurrency] = useState(() => {
+    return localStorage.getItem('fpt_currency') || 'PKR'
+  })
+
   const [clients, setClients] = useState(() => {
     return JSON.parse(localStorage.getItem('clients')) || []
   })
@@ -26,6 +30,14 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('followups', JSON.stringify(followups))
   }, [followups])
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setCurrency(localStorage.getItem('fpt_currency') || 'PKR')
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
 
   // Client actions
   const addClient = (client) => {
@@ -71,6 +83,7 @@ export function AppProvider({ children }) {
       clients, addClient, deleteClient, updateClient,
       proposals, addProposal, deleteProposal, updateProposal,
       followups, addFollowup, deleteFollowup, updateFollowup,
+      currency, setCurrency,
     }}>
       {children}
     </AppContext.Provider>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
+import { formatDate } from '../utils/formatDate'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -17,7 +18,7 @@ const STATUS_COLORS_PIE = {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export default function Dashboard() {
-  const { clients, proposals, followups } = useApp()
+  const { clients, proposals, followups, currency } = useApp()
   const { isDark } = useTheme()
 
   const today = new Date().toISOString().split('T')[0]
@@ -38,7 +39,7 @@ export default function Dashboard() {
     { label: 'Total Proposals', value: totalProposals, color: '#9065B0' },
     { label: 'Won Proposals', value: wonProposals, color: '#0F9B6E' },
     { label: 'Win Rate', value: `${winRate}%`, color: '#D9730D' },
-    { label: 'Revenue (PKR)', value: totalRevenue.toLocaleString(), color: '#0F9B6E' },
+    { label: `Revenue (${currency})`, value: totalRevenue.toLocaleString(), color: '#0F9B6E' },
     { label: 'Overdue Follow-ups', value: overdueFollowups, color: '#E03E3E' },
   ]
 
@@ -94,7 +95,7 @@ export default function Dashboard() {
             <p className="text-xs mt-0.5" style={{ color: subColor }}>Track your earnings progress</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium" style={{ color: subColor }}>Goal (PKR)</span>
+            <span className="text-xs font-medium" style={{ color: subColor }}>Goal ({currency})</span>
             <input
               type="number"
               value={revenueGoal}
@@ -123,8 +124,8 @@ export default function Dashboard() {
           </span>
         </div>
         <div className="flex justify-between mt-2">
-          <span className="text-xs" style={{ color: subColor }}>PKR {totalRevenue.toLocaleString()} earned</span>
-          <span className="text-xs" style={{ color: subColor }}>Goal: PKR {revenueGoal.toLocaleString()}</span>
+          <span className="text-xs" style={{ color: subColor }}>{currency} {totalRevenue.toLocaleString()} earned</span>
+          <span className="text-xs" style={{ color: subColor }}>Goal: {currency} {revenueGoal.toLocaleString()}</span>
         </div>
       </div>
 
@@ -193,7 +194,7 @@ export default function Dashboard() {
                 <div key={p.id} className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium" style={{ color: titleColor }}>{p.title}</p>
-                    <p className="text-xs" style={{ color: subColor }}>PKR {Number(p.amount).toLocaleString()}</p>
+                    <p className="text-xs" style={{ color: subColor }}>{currency} {Number(p.amount).toLocaleString()}</p>
                   </div>
                   <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[p.status].bg, color: STATUS_COLORS[p.status].color }}>
                     {p.status}
@@ -216,7 +217,7 @@ export default function Dashboard() {
                     <p className="text-sm font-medium" style={{ color: titleColor }}>{getProposalTitle(f.proposalId)}</p>
                     <p className="text-xs" style={{ color: subColor }}>{f.notes || 'No notes'}</p>
                   </div>
-                  <p className="text-xs font-medium" style={{ color: '#2383E2' }}>{f.date}</p>
+                  <p className="text-xs font-medium" style={{ color: '#2383E2' }}>{formatDate(f.date)}</p>
                 </div>
               ))}
             </div>
