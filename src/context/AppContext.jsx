@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { logActivity } from '../utils/activityLog'
 
 const AppContext = createContext()
 
@@ -41,41 +42,72 @@ export function AppProvider({ children }) {
 
   // Client actions
   const addClient = (client) => {
-    setClients([...clients, { ...client, id: Date.now() }])
+    const newClient = { ...client, id: Date.now() }
+    setClients([...clients, newClient])
+    logActivity('CLIENT_ADDED', `Added client: ${client.name}`)
   }
 
   const deleteClient = (id) => {
+    const client = clients.find((c) => c.id === id)
     setClients(clients.filter((c) => c.id !== id))
+    logActivity('CLIENT_DELETED', `Deleted client: ${client?.name}`)
   }
 
   const updateClient = (id, updated) => {
     setClients(clients.map((c) => (c.id === id ? { ...c, ...updated } : c)))
+    logActivity('CLIENT_UPDATED', `Updated client: ${updated.name || 'Unknown'}`)
   }
 
-  // Proposal actions
   const addProposal = (proposal) => {
     setProposals([...proposals, { ...proposal, id: Date.now() }])
+    logActivity('PROPOSAL_ADDED', `New proposal: ${proposal.title}`)
   }
 
   const deleteProposal = (id) => {
+    const proposal = proposals.find((p) => p.id === id)
     setProposals(proposals.filter((p) => p.id !== id))
+    logActivity('PROPOSAL_DELETED', `Deleted proposal: ${proposal?.title}`)
   }
 
   const updateProposal = (id, updated) => {
     setProposals(proposals.map((p) => (p.id === id ? { ...p, ...updated } : p)))
+    if (updated.status) {
+      logActivity('PROPOSAL_STATUS', `Proposal moved to ${updated.status}: ${proposals.find(p => p.id === id)?.title}`)
+    } else {
+      logActivity('PROPOSAL_UPDATED', `Updated proposal: ${updated.title || proposals.find(p => p.id === id)?.title}`)
+    }
   }
 
-  // Followup actions
   const addFollowup = (followup) => {
     setFollowups([...followups, { ...followup, id: Date.now() }])
+    logActivity('FOLLOWUP_ADDED', `Follow-up added for proposal ID: ${followup.proposalId}`)
   }
 
   const deleteFollowup = (id) => {
     setFollowups(followups.filter((f) => f.id !== id))
+    logActivity('FOLLOWUP_DELETED', `Follow-up deleted`)
   }
 
   const updateFollowup = (id, updated) => {
     setFollowups(followups.map((f) => (f.id === id ? { ...f, ...updated } : f)))
+    logActivity('FOLLOWUP_UPDATED', `Follow-up updated`)
+  }
+
+  const [templates, setTemplates] = useState(() => {
+    return JSON.parse(localStorage.getItem('fpt_templates')) || []
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fpt_templates', JSON.stringify(templates))
+  }, [templates])
+
+  const addTemplate = (template) => {
+    setTemplates([...templates, { ...template, id: Date.now() }])
+    logActivity('TEMPLATE_SAVED', `Saved template: ${template.title}`)
+  }
+
+  const deleteTemplate = (id) => {
+    setTemplates(templates.filter((t) => t.id !== id))
   }
 
   return (
@@ -83,6 +115,7 @@ export function AppProvider({ children }) {
       clients, addClient, deleteClient, updateClient,
       proposals, addProposal, deleteProposal, updateProposal,
       followups, addFollowup, deleteFollowup, updateFollowup,
+      templates, addTemplate, deleteTemplate,
       currency, setCurrency,
     }}>
       {children}

@@ -7,6 +7,7 @@ import { exportProposalPDF } from '../utils/exportPDF'
 import { exportProposalsCSV } from '../utils/exportCSV'
 import EmptyState from '../components/EmptyState'
 import { formatDate } from '../utils/formatDate'
+import confetti from 'canvas-confetti'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -19,7 +20,7 @@ const STATUS_COLORS = {
 }
 
 export default function Proposals() {
-  const { proposals, addProposal, deleteProposal, updateProposal, clients, currency } = useApp()
+  const { proposals, addProposal, deleteProposal, updateProposal, clients, currency, templates, addTemplate, deleteTemplate } = useApp()
   const { showToast } = useToast()
   const { isDark, accent } = useTheme()
   const [showForm, setShowForm] = useState(false)
@@ -50,6 +51,14 @@ export default function Proposals() {
       updateProposal(editId, form)
       setEditId(null)
       showToast('Proposal updated successfully!', 'success')
+      if (form.status === 'Won') {
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#4F46E5', '#7c3aed', '#10B981', '#F59E0B', '#EF4444'],
+        })
+      }
     } else {
       addProposal(form)
       showToast('Proposal added successfully!', 'success')
@@ -172,6 +181,39 @@ export default function Proposals() {
         </div>
       )}
 
+      {/* Templates Section */}
+      {templates.length > 0 && (
+        <div className="rounded-xl p-5 border mb-6" style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
+          <h3 className="font-semibold mb-3" style={{ color: titleColor }}>📋 Saved Templates</h3>
+          <div className="flex flex-wrap gap-2">
+            {templates.map((template) => (
+              <div key={template.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
+                <span className="text-sm font-medium" style={{ color: titleColor }}>{template.title}</span>
+                <button
+                  onClick={() => {
+                    setForm({ title: template.title, clientId: '', amount: template.amount, deadline: '', status: 'Draft', notes: template.notes })
+                    setShowForm(true)
+                    showToast('Template loaded!', 'success')
+                  }}
+                  className="text-xs px-2 py-0.5 rounded"
+                  style={{ backgroundColor: accent, color: '#FFFFFF' }}
+                >
+                  Use
+                </button>
+                <button
+                  onClick={() => { deleteTemplate(template.id); showToast('Template deleted!', 'error') }}
+                  className="text-xs px-2 py-0.5 rounded"
+                  style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Proposals List */}
       {filtered.length === 0 ? (
         <EmptyState
           icon="📄"
@@ -200,17 +242,27 @@ export default function Proposals() {
                 <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {formatDate(proposal.deadline)}</p>
                 {proposal.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{proposal.notes}</p>}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
-                  onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported', 'success') }}
+                  onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported!', 'success') }}
                   className="px-3 py-1 rounded-lg text-sm border"
                   style={{ backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', color: '#065F46' }}
                 >
                   📄 PDF
                 </button>
-                <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
-                <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="delete-btn px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
-              </div>
+                <button
+                  onClick={() => {
+                  addTemplate({ title: proposal.title, amount: proposal.amount, status: 'Draft', notes: proposal.notes || '' })
+                  showToast('Saved as template!', 'success')
+                }}
+                className="px-3 py-1 rounded-lg text-sm border"
+                style={{ backgroundColor: '#EDE9FE', borderColor: '#DDD6FE', color: '#6D28D9' }}
+              >
+                📋 Template
+              </button>
+              <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
+              <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="delete-btn px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
+            </div>
             </div>
           ))}
         </div>

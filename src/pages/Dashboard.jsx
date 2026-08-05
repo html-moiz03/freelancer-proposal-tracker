@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { getLogs, clearLogs } from '../utils/activityLog'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
 import { formatDate } from '../utils/formatDate'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts'
 
 const STATUS_COLORS_PIE = {
@@ -19,13 +20,13 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 export default function Dashboard() {
   const { clients, proposals, followups, currency } = useApp()
-  const { isDark } = useTheme()
+  const { isDark, accent } = useTheme()
 
   const today = new Date().toISOString().split('T')[0]
   const [revenueGoal, setRevenueGoal] = useState(() => {
     return Number(localStorage.getItem('fpt_revenue_goal')) || 100000
   })
-
+  const logs = getLogs()
   const totalProposals = proposals.length
   const wonProposals = proposals.filter((p) => p.status === 'Won').length
   const winRate = totalProposals > 0 ? Math.round((wonProposals / totalProposals) * 100) : 0
@@ -49,6 +50,16 @@ export default function Dashboard() {
       const d = new Date(p.deadline)
       return d.getMonth() === i
     }).length
+  }))
+
+  const revenueData = MONTHS.map((month, i) => ({
+    month,
+    revenue: proposals
+      .filter((p) => {
+        const d = new Date(p.deadline)
+        return d.getMonth() === i && p.status === 'Won'
+      })
+      .reduce((sum, p) => sum + Number(p.amount), 0)
   }))
 
   const statusCounts = ['Draft', 'Sent', 'In Review', 'Won', 'Lost'].map((status) => ({
@@ -182,6 +193,35 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Revenue Line Chart */}
+      <div className="rounded-xl p-5 border mt-6" style={card}>
+        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>📈 Revenue Trend ({currency})</h3>
+        {proposals.filter(p => p.status === 'Won').length === 0 ? (
+        <div className="flex items-center justify-center h-40" style={{ color: subColor }}>
+          <p className="text-sm">No won proposals yet — close some deals!</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={revenueData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={accent} stopOpacity={0.3}/>
+                <stop offset="95%" stopColor={accent} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2a2a2a' : '#F1F0EE'} />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fill: subColor }} />
+            <YAxis tick={{ fontSize: 11, fill: subColor }} allowDecimals={false} />
+            <Tooltip
+              contentStyle={{ borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, fontSize: '12px', backgroundColor: isDark ? '#1a1a1a' : '#fff', color: titleColor }}
+              formatter={(value) => [`${currency} ${value.toLocaleString()}`, 'Revenue']}
+            />
+            <Area type="monotone" dataKey="revenue" stroke={accent} strokeWidth={2} fill="url(#revenueGradient)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+
       {/* Recent Activity */}
       <div className="grid grid-cols-2 gap-6">
         <div className="rounded-xl p-5 border" style={card}>
@@ -223,6 +263,56 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+      {/* Activity Log */}
+      <div className="rounded-xl p-5 border mt-6" style={card}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold" style={{ color: titleColor }}>📋 Activity Log</h3>
+          <button
+            onClick={() => { clearLogs(); window.location.reload() }}
+            className="text-xs px-3 py-1 rounded-lg border"
+            style={{ color: subColor, borderColor: isDark ? '#2a2a2a' : '#E9E9E7', backgroundColor: 'transparent' }}
+          >
+            Clear All
+          </button>
+        </div>
+        {logs.length === 0 ? (
+          <p className="text-sm" style={{ color: subColor }}>No activity yet — start adding clients and proposals!</p>
+        ) : (
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            {logs.map((log) => {
+              const icons = {
+                CLIENT_ADDED: '👤',
+                CLIENT_DELETED: '🗑️',
+                CLIENT_UPDATED: '✏️',
+                PROPOSAL_ADDED: '📄',
+                PROPOSAL_DELETED: '🗑️',
+                PROPOSAL_UPDATED: '✏️',
+                PROPOSAL_STATUS: '🔄',
+                FOLLOWUP_ADDED: '🔔',
+                FOLLOWUP_DELETED: '🗑️',
+                FOLLOWUP_UPDATED: '✏️',
+              }
+              const timeAgo = (timestamp) => {
+                const diff = Date.now() - new Date(timestamp).getTime()
+                const mins = Math.floor(diff / 60000)
+                const hours = Math.floor(diff / 3600000)
+                const days = Math.floor(diff / 86400000)
+                if (days > 0) return `${days}d ago`
+                if (hours > 0) return `${hours}h ago`
+                if (mins > 0) return `${mins}m ago`
+                return 'just now'
+              }
+              return (
+                <div key={log.id} className="flex items-center gap-3 py-2 border-b last:border-0" style={{ borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
+                  <span style={{ fontSize: '16px' }}>{icons[log.action] || '📌'}</span>
+                  <p className="text-sm flex-1" style={{ color: titleColor }}>{log.details}</p>
+                  <p className="text-xs" style={{ color: subColor }}>{timeAgo(log.timestamp)}</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

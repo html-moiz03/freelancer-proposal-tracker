@@ -2,6 +2,7 @@ import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { formatDate } from '../utils/formatDate'
+import confetti from 'canvas-confetti'
 
 const COLUMNS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
 
@@ -34,9 +35,16 @@ export default function Kanban() {
     const { destination, source, draggableId } = result
     if (!destination) return
     if (destination.droppableId === source.droppableId) return
-
     const proposalId = Number(draggableId)
     updateProposal(proposalId, { status: destination.droppableId })
+    if (destination.droppableId === 'Won') {
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#4F46E5', '#7c3aed', '#10B981', '#F59E0B', '#EF4444'],
+      })
+    }
   }
 
   return (

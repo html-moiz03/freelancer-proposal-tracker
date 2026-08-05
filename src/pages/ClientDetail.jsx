@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
+import { useState } from 'react'
 
 const STATUS_COLORS = {
   Draft: { bg: '#F1F0EE', color: '#6B6B6B' },
@@ -13,10 +14,18 @@ const STATUS_COLORS = {
 export default function ClientDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { clients, proposals, currency, } = useApp()
+  const { clients, proposals, currency, updateClient } = useApp()
+
+  const handleSaveNotes = () => {
+    updateClient(client.id, { notes })
+    setNotesSaved(true)
+    setTimeout(() => setNotesSaved(false), 2000)
+  }
   const { isDark } = useTheme()
 
   const client = clients.find((c) => c.id === Number(id))
+  const [notes, setNotes] = useState(client?.notes || '')
+  const [notesSaved, setNotesSaved] = useState(false)
   const clientProposals = proposals.filter((p) => Number(p.clientId) === Number(id))
 
   const card = { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
@@ -107,6 +116,30 @@ export default function ClientDetail() {
             ))}
           </div>
         )}
+      </div>
+      {/* Notes Section */}
+      <div className="rounded-xl p-5 border mt-4" style={card}>
+        <h3 className="font-semibold mb-3" style={{ color: titleColor }}>📝 Client Notes</h3>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add notes about this client — meeting notes, preferences, important details..."
+          rows={5}
+          style={{
+            width: '100%', padding: '12px', borderRadius: '8px',
+            border: `1.5px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
+            backgroundColor: isDark ? '#111111' : '#F7F6F3',
+            color: titleColor, fontSize: '14px', outline: 'none',
+            fontFamily: 'inherit', resize: 'vertical', lineHeight: '1.6'
+          }}
+        />
+        <button
+          onClick={handleSaveNotes}
+          className="mt-3 px-5 py-2 rounded-lg text-sm font-medium"
+          style={{ backgroundColor: notesSaved ? '#D1FAE5' : '#37352F', color: notesSaved ? '#065F46' : '#FFFFFF' }}
+        >
+          {notesSaved ? '✓ Notes Saved!' : 'Save Notes'}
+        </button>
       </div>
     </div>
   )
