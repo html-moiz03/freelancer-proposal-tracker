@@ -100,7 +100,7 @@ export default function Dashboard() {
 
       {/* Revenue Goal */}
       <div className="rounded-xl p-5 border mb-6" style={card}>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-2">
           <div>
             <h3 className="font-semibold" style={{ color: titleColor }}>Monthly Revenue Goal</h3>
             <p className="text-xs mt-0.5" style={{ color: subColor }}>Track your earnings progress</p>
@@ -141,7 +141,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl p-5 border" style={card}>
             <p className="text-sm font-medium mb-1" style={{ color: titleColor }}>{stat.label}</p>
@@ -151,7 +151,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="rounded-xl p-5 border" style={card}>
           <h3 className="font-semibold mb-4" style={{ color: titleColor }}>Proposals by Month</h3>
           {proposals.length === 0 ? (
@@ -223,7 +223,7 @@ export default function Dashboard() {
     </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-xl p-5 border" style={card}>
           <h3 className="font-semibold mb-4" style={{ color: titleColor }}>Recent Proposals</h3>
           {recentProposals.length === 0 ? (

@@ -130,7 +130,7 @@ export default function Clients() {
       {showForm && (
         <div className="rounded-xl p-6 mb-6 border" style={card}>
           <h3 className="text-lg font-semibold mb-4" style={{ color: titleColor }}>{editId ? 'Edit Client' : 'New Client'}</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[{ key: 'name', placeholder: 'Full Name' }, { key: 'email', placeholder: 'Email Address' }, { key: 'phone', placeholder: 'Phone Number' }, { key: 'company', placeholder: 'Company (optional)' }].map(({ key, placeholder }) => (
               <div key={key}>
                 <input type="text" placeholder={placeholder} value={form[key]}

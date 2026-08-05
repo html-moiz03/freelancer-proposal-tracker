@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
@@ -6,20 +7,41 @@ import Proposals from './pages/Proposals'
 import Followups from './pages/Followups'
 import Landing from './pages/Landing'
 import Profile from './pages/Profile'
-import { useTheme } from './context/ThemeContext'
 import ClientDetail from './pages/ClientDetail'
 import Kanban from './pages/Kanban'
 import Settings from './pages/Settings'
+import { useTheme } from './context/ThemeContext'
 
 function App() {
   const { isDark } = useTheme()
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/dashboard/*" element={
-        <div className="flex min-h-screen" style={{ backgroundColor: isDark ? '#1a1a1a' : '#F7F6F3' }}>
+        <div style={{
+          display: 'flex',
+          minHeight: '100vh',
+          backgroundColor: isDark ? '#1a1a1a' : '#F7F6F3'
+        }}>
           <Sidebar />
-          <main className="flex-1 p-4 md:p-8 pt-16 md:pt-8 w-full" style={{ color: isDark ? '#ffffff' : '#37352F', minWidth: 0 }}>
+          <main style={{
+            flex: 1,
+            padding: isMobile ? '60px 16px 16px 16px' : '32px',
+            width: isMobile ? '100vw' : 'calc(100vw - 256px)',
+            maxWidth: isMobile ? '100vw' : 'calc(100vw - 256px)',
+            overflowX: 'hidden',
+            color: isDark ? '#ffffff' : '#37352F',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />
