@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getLogs, clearLogs } from '../utils/activityLog'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
@@ -17,6 +17,37 @@ const STATUS_COLORS_PIE = {
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function WelcomeText({ titleColor, accent }) {
+  const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+  const name = session.name ? session.name.split(' ')[0] : 'there'
+  const fullText = `Welcome, ${name}! 👋`
+  const [displayed, setDisplayed] = useState('')
+
+  useEffect(() => {
+    let i = 0
+    const interval = setInterval(() => {
+      i++
+      setDisplayed(fullText.slice(0, i))
+      if (i >= fullText.length) clearInterval(interval)
+    }, 60)
+    return () => clearInterval(interval)
+  }, [fullText])
+
+  return (
+    <h2 className="text-2xl font-bold" style={{ color: titleColor }}>
+      {displayed}
+      <span style={{
+        display: 'inline-block',
+        width: '2px', height: '24px',
+        backgroundColor: accent,
+        marginLeft: '2px',
+        verticalAlign: 'middle',
+        animation: 'blink 1s step-end infinite'
+      }} />
+      <style>{`@keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }`}</style>
+    </h2>
+  )
+}
 
 export default function Dashboard() {
   const { clients, proposals, followups, currency } = useApp()
@@ -86,6 +117,17 @@ export default function Dashboard() {
     return proposal ? proposal.title : 'Unknown'
   }
 
+  const topClients = clients
+    .map((client) => {
+      const clientProposals = proposals.filter((p) => Number(p.clientId) === client.id)
+      const revenue = clientProposals.filter((p) => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+      const won = clientProposals.filter((p) => p.status === 'Won').length
+      return { ...client, revenue, won, total: clientProposals.length }
+    })
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5)
+
   const card = {
     backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF',
     borderColor: isDark ? '#2a2a2a' : '#E9E9E7'
@@ -96,7 +138,10 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6" style={{ color: titleColor }}>Dashboard</h2>
+      <div className="mb-6">
+        <WelcomeText titleColor={titleColor} accent={accent} />
+        <p className="text-sm mt-1" style={{ color: subColor }}>Here's what's happening with your business today.</p>
+      </div>
 
       {/* Revenue Goal */}
       <div className="rounded-xl p-5 border mb-6" style={card}>
@@ -125,7 +170,7 @@ export default function Dashboard() {
               <div style={{
                 height: '100%', borderRadius: '99px',
                 width: `${Math.min(revenueGoal > 0 ? (totalRevenue / revenueGoal) * 100 : 0, 100)}%`,
-                background: 'linear-gradient(135deg, #4F46E5, #7c3aed)',
+                background: `linear-gradient(135deg, ${accent}, #7c3aed)`,
                 transition: 'width 0.5s ease'
               }} />
             </div>
@@ -165,7 +210,7 @@ export default function Dashboard() {
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: subColor }} />
                 <YAxis tick={{ fontSize: 11, fill: subColor }} allowDecimals={false} />
                 <Tooltip contentStyle={{ borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, fontSize: '12px', backgroundColor: isDark ? '#1a1a1a' : '#fff', color: titleColor }} />
-                <Bar dataKey="proposals" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="proposals" fill={accent} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -308,6 +353,41 @@ export default function Dashboard() {
                   <span style={{ fontSize: '16px' }}>{icons[log.action] || '📌'}</span>
                   <p className="text-sm flex-1" style={{ color: titleColor }}>{log.details}</p>
                   <p className="text-xs" style={{ color: subColor }}>{timeAgo(log.timestamp)}</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Top Clients Leaderboard */}
+      <div className="rounded-xl p-5 border mt-6" style={card}>
+        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>🏆 Top Clients by Revenue</h3>
+        {topClients.length === 0 ? (
+          <p className="text-sm" style={{ color: subColor }}>No client revenue data yet</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {topClients.map((client, index) => {
+              const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
+              const maxRevenue = topClients[0].revenue
+              return (
+                <div key={client.id} className="flex items-center gap-3">
+                  <span style={{ fontSize: '18px', width: '24px' }}>{medals[index]}</span>
+                  <div style={{ flex: 1 }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium" style={{ color: titleColor }}>{client.name}</p>
+                      <p className="text-sm font-bold" style={{ color: accent }}>{currency} {client.revenue.toLocaleString()}</p>
+                    </div>
+                    <div style={{ backgroundColor: isDark ? '#2a2a2a' : '#F1F0EE', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: '99px',
+                        width: `${maxRevenue > 0 ? (client.revenue / maxRevenue) * 100 : 0}%`,
+                        background: `linear-gradient(135deg, ${accent}, #7c3aed)`,
+                        transition: 'width 0.5s ease'
+                      }} />
+                    </div>
+                    <p className="text-xs mt-1" style={{ color: subColor }}>{client.won} won · {client.total} total proposals</p>
+                  </div>
                 </div>
               )
             })}

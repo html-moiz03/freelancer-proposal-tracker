@@ -11,6 +11,9 @@ import ClientDetail from './pages/ClientDetail'
 import Kanban from './pages/Kanban'
 import Settings from './pages/Settings'
 import { useTheme } from './context/ThemeContext'
+import NotificationBell from './components/NotificationBell'
+import GlobalSearch from './components/GlobalSearch'
+import QuickAdd from './components/QuickAdd'
 
 function App() {
   const { isDark } = useTheme()
@@ -42,6 +45,9 @@ function App() {
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
+            <NotificationBell />
+            <GlobalSearch />
+            <QuickAdd />
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />

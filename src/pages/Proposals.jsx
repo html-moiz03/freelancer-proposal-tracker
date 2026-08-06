@@ -99,6 +99,19 @@ export default function Proposals() {
     return new Date(deadline) < new Date()
   }
 
+  const getCountdown = (deadline, status) => {
+    if (status === 'Won' || status === 'Lost') return null
+    const today = new Date()
+    const deadlineDate = new Date(deadline)
+    const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24))
+    if (diffDays < 0) return null
+    if (diffDays === 0) return { label: '⚡ Due Today', bg: '#FEF3C7', color: '#D97706' }
+    if (diffDays === 1) return { label: '⏰ Due Tomorrow', bg: '#FEF3C7', color: '#D97706' }
+    if (diffDays <= 3) return { label: `⏳ ${diffDays} days left`, bg: '#FEF3C7', color: '#D97706' }
+    if (diffDays <= 7) return { label: `📅 ${diffDays} days left`, bg: '#DBEAFE', color: '#1D4ED8' }
+    return null
+  }
+
   const filtered = proposals
     .filter((p) => filterStatus === 'All' || p.status === filterStatus)
     .filter((p) =>
@@ -237,6 +250,14 @@ export default function Proposals() {
                   {isExpired(proposal.deadline, proposal.status) && (
                     <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>⚠ Deadline Passed</span>
                   )}
+                  {(() => {
+                    const countdown = getCountdown(proposal.deadline, proposal.status)
+                    return countdown ? (
+                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: countdown.bg, color: countdown.color }}>
+                        {countdown.label}
+                      </span>
+                    ) : null
+                  })()}
                 </div>
                 <p className="text-sm" style={{ color: subColor }}>{getClientName(proposal.clientId)} • {currency} {Number(proposal.amount).toLocaleString()}</p>
                 <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {formatDate(proposal.deadline)}</p>
