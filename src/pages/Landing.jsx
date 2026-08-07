@@ -1,37 +1,87 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 function AnimatedStatCard({ stat, delay }) {
   const [count, setCount] = useState(0)
   const [visible, setVisible] = useState(false)
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(true)
-      let start = 0
+      let i = 0
       const step = Math.ceil(stat.value / (1500 / 16))
       const counter = setInterval(() => {
-        start += step
-        if (start >= stat.value) { setCount(stat.value); clearInterval(counter) }
-        else setCount(start)
+        i += step
+        if (i >= stat.value) { setCount(stat.value); clearInterval(counter) }
+        else setCount(i)
       }, 16)
     }, delay + 600)
     return () => clearTimeout(timer)
   }, [delay, stat.value])
-
   return (
     <div style={{
       width: '160px', borderRadius: '120px 120px 20px 20px',
-      backgroundColor: stat.color, padding: '30px 16px 24px',
-      textAlign: 'center',
+      backgroundColor: stat.color, padding: '30px 16px 24px', textAlign: 'center',
       transform: visible ? 'translateY(0)' : 'translateY(40px)',
       opacity: visible ? 1 : 0,
       transition: `all 0.7s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
     }}>
-      <div style={{ fontSize: '36px', fontWeight: '800', color: stat.accent, lineHeight: 1, marginBottom: '6px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+      <div style={{ fontSize: '36px', fontWeight: '800', color: stat.accent, lineHeight: 1, marginBottom: '6px' }}>
         {stat.suffix === '+' ? `${count}+` : `${count}%`}
       </div>
       <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', lineHeight: 1.4 }}>{stat.label}</div>
+    </div>
+  )
+}
+
+function useScrollReveal() {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setVisible(true); observer.disconnect() }
+    }, { threshold: 0.1 })
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+  return [ref, visible]
+}
+
+function RevealDiv({ children, delay = 0, style = {} }) {
+  const [ref, visible] = useScrollReveal()
+  return (
+    <div ref={ref} style={{
+      transform: visible ? 'translateY(0)' : 'translateY(40px)',
+      opacity: visible ? 1 : 0,
+      transition: `all 0.7s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
+      ...style
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function TiltCard({ children, style = {} }) {
+  const cardRef = useRef(null)
+  const handleMouseMove = (e) => {
+    const card = cardRef.current
+    const rect = card.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    const rotateX = (y - centerY) / 10
+    const rotateY = (centerX - x) / 10
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`
+    card.style.boxShadow = '0 20px 60px rgba(0,0,0,0.12)'
+  }
+  const handleMouseLeave = () => {
+    cardRef.current.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)'
+    cardRef.current.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'
+  }
+  return (
+    <div ref={cardRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}
+      style={{ transition: 'transform 0.1s ease, box-shadow 0.3s ease', ...style }}>
+      {children}
     </div>
   )
 }
@@ -84,6 +134,13 @@ export default function Landing() {
     }
   }
 
+  const scrollToForm = (login) => {
+    setIsLogin(login)
+    setTimeout(() => {
+      document.querySelector('.form-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+  }
+
   const inputStyle = {
     width: '100%', padding: '11px 14px', borderRadius: '10px',
     border: '1.5px solid #E2E8F0', backgroundColor: '#FFFFFF',
@@ -91,6 +148,29 @@ export default function Landing() {
     boxSizing: 'border-box', marginBottom: '4px',
     transition: 'border-color 0.2s', fontFamily: 'Plus Jakarta Sans, sans-serif'
   }
+
+  const features = [
+    { icon: '📄', title: 'Proposal Tracking', desc: 'Track every proposal from Draft to Won with color-coded status badges and deadline warnings.' },
+    { icon: '👤', title: 'Client Management', desc: 'Manage all your clients with ratings, notes, and per-client revenue analytics.' },
+    { icon: '🗂️', title: 'Kanban Board', desc: 'Drag and drop proposals across columns to update their status in real time.' },
+    { icon: '📊', title: 'Analytics Dashboard', desc: 'Track your win rate, revenue trend, and proposal pipeline with beautiful charts.' },
+    { icon: '🔔', title: 'Follow-up Reminders', desc: 'Never miss a follow-up with automatic overdue detection and notifications.' },
+    { icon: '📤', title: 'Export & Backup', desc: 'Export PDFs, download CSV data, and backup everything as JSON.' },
+  ]
+
+  const steps = [
+    { num: '01', title: 'Add Your Clients', desc: 'Start by adding your freelance clients with their contact details.', icon: '👤' },
+    { num: '02', title: 'Create Proposals', desc: 'Create detailed proposals linked to clients with amounts and deadlines.', icon: '📄' },
+    { num: '03', title: 'Track & Win Deals', desc: 'Move proposals through your pipeline and celebrate every win! 🎉', icon: '🏆' },
+  ]
+
+  const testimonials = [
+    { name: 'Sarah Johnson', role: 'UI/UX Freelancer', avatar: '👩‍💻', quote: 'FP Tracker completely changed how I manage my freelance business. I went from losing track of proposals to closing 40% more deals!' },
+    { name: 'Ahmed Raza', role: 'Full Stack Developer', avatar: '👨‍💻', quote: 'The Kanban board is a game changer. I can see exactly where every proposal stands and follow up at the right time.' },
+    { name: 'Maria Santos', role: 'Digital Marketer', avatar: '👩‍🎨', quote: 'I love the PDF export feature. My clients are always impressed with professionally formatted proposals.' },
+  ]
+
+  const marqueeItems = ['✦ Kanban Board', '✦ PDF Export', '✦ Dark Mode', '✦ CSV Export', '✦ Client Rating', '✦ Activity Log', '✦ Proposal Templates', '✦ Global Search', '✦ Revenue Charts', '✦ Follow-up Reminders', '✦ Confetti on Win', '✦ Quick Add']
 
   return (
     <>
@@ -100,17 +180,18 @@ export default function Landing() {
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .landing-root { min-height: 100vh; background-color: #F7F6F3; position: relative; overflow-x: hidden; display: flex; flex-direction: column; }
         .doodle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .hero-glow { position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 700px; height: 500px; background: radial-gradient(ellipse, rgba(124,58,237,0.12) 0%, rgba(79,70,229,0.06) 40%, transparent 70%); pointer-events: none; z-index: 0; border-radius: 50%; }
         .main-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px; gap: 60px; position: relative; z-index: 1; flex-wrap: wrap; }
         .left-side { flex: 1; min-width: 280px; max-width: 500px; transform: translateX(-60px); opacity: 0; transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
         .left-side.visible { transform: translateX(0); opacity: 1; }
         .badge { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #ede9fe, #fce7f3); border: 1px solid #ddd6fe; border-radius: 50px; padding: 5px 14px; font-size: 12px; font-weight: 600; color: #7c3aed; margin-bottom: 16px; }
         .logo-img { width: 200px; margin-bottom: 16px; }
         .tagline { font-size: 26px; font-weight: 800; color: #1e1b4b; line-height: 1.25; margin-bottom: 12px; letter-spacing: -0.5px; }
-        .tagline span { background: linear-gradient(135deg, #7c3aed, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .tagline span { background: linear-gradient(135deg, #7c3aed, #f97316, #7c3aed); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: gradientShift 3s linear infinite; }
+        @keyframes gradientShift { 0% { background-position: 0% } 100% { background-position: 200% } }
         .desc { font-size: 13px; color: #64748b; line-height: 1.7; max-width: 400px; margin-bottom: 16px; }
         .divider { width: 100%; height: 1px; background: linear-gradient(to right, #e2e8f0, transparent); margin: 12px 0; }
         .stats-row { display: flex; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
-        .stat-item { text-align: left; }
         .stat-value { font-size: 20px; font-weight: 800; background: linear-gradient(135deg, #7c3aed, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-label { font-size: 11px; color: #94a3b8; font-weight: 500; margin-top: 2px; }
         .features-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
@@ -123,10 +204,13 @@ export default function Landing() {
         .right-side { flex-shrink: 0; width: 100%; max-width: 380px; transform: translateY(60px); opacity: 0; transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s; }
         .right-side.visible { transform: translateY(0); opacity: 1; }
         .divider-vertical { width: 1px; align-self: stretch; background: linear-gradient(to bottom, transparent, #e2e8f0 30%, #e2e8f0 70%, transparent); flex-shrink: 0; }
-        .lottie-wrap { width: 160px; margin: 0 auto -20px auto; position: relative; z-index: 2; }
         .form-card { background: #FFFFFF; border-radius: 20px; padding: 32px 28px; box-shadow: 0 4px 40px rgba(124,58,237,0.08); border: 1px solid #f1f5f9; }
         .form-title { font-size: 22px; font-weight: 800; color: #1e1b4b; margin-bottom: 6px; text-align: center; }
         .form-sub { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 20px; line-height: 1.5; }
+        .social-btn { width: 100%; padding: 11px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #FFFFFF; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: #374151; font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.2s; margin-bottom: 8px; }
+        .social-btn:hover { background: #F7F6F3; }
+        .divider-or { display: flex; align-items: center; gap: 12px; margin: 12px 0; color: #94a3b8; font-size: 12px; }
+        .divider-or::before, .divider-or::after { content: ''; flex: 1; height: 1px; background: #E2E8F0; }
         .error-msg { font-size: 11px; color: #dc2626; margin-bottom: 8px; padding-left: 2px; }
         .submit-btn { width: 100%; padding: 13px; border-radius: 50px; border: none; background: linear-gradient(135deg, #4F46E5, #7c3aed); color: white; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity 0.2s, transform 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; }
         .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
@@ -134,138 +218,222 @@ export default function Landing() {
         .toggle-link { color: #4F46E5; font-weight: 700; cursor: pointer; }
         .toggle-link:hover { text-decoration: underline; }
         .stats-section { position: relative; z-index: 1; padding: 20px 24px 30px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; background-color: #F7F6F3; }
+        .marquee-wrap { overflow: hidden; white-space: nowrap; background: linear-gradient(135deg, #4F46E5, #7c3aed); padding: 12px 0; position: relative; z-index: 1; }
+        .marquee-track { display: inline-flex; animation: marquee 20s linear infinite; }
+        .marquee-item { font-size: 13px; font-weight: 600; color: white; padding: 0 24px; opacity: 0.9; }
+        @keyframes marquee { 0% { transform: translateX(0) } 100% { transform: translateX(-50%) } }
+        .section { position: relative; z-index: 1; padding: 60px 40px; background-color: #F7F6F3; }
+        .section-title { font-size: 28px; font-weight: 800; color: #1e1b4b; text-align: center; margin-bottom: 8px; }
+        .section-sub { font-size: 14px; color: #64748b; text-align: center; margin-bottom: 40px; }
+        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 900px; margin: 0 auto; }
+        .feature-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; border: 1px solid rgba(233,233,231,0.8); cursor: default; }
+        .steps-grid { display: flex; gap: 24px; max-width: 800px; margin: 0 auto; justify-content: center; flex-wrap: wrap; }
+        .step-card { flex: 1; min-width: 200px; text-align: center; position: relative; }
+        .step-num { font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #7c3aed, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; margin-bottom: 12px; }
+        .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 900px; margin: 0 auto; }
+        .testimonial-card { background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; border: 1px solid rgba(233,233,231,0.8); }
+        .cta-section { position: relative; z-index: 1; padding: 80px 40px; text-align: center; background: linear-gradient(135deg, #4F46E5, #7c3aed); overflow: hidden; }
+        .cta-section::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+        .cta-title { font-size: 32px; font-weight: 800; color: white; margin-bottom: 12px; position: relative; }
+        .cta-sub { font-size: 15px; color: rgba(255,255,255,0.8); margin-bottom: 32px; position: relative; }
+        .cta-btn { padding: 14px 36px; border-radius: 50px; border: 2px solid white; background: white; color: #4F46E5; font-size: 15px; font-weight: 800; cursor: pointer; transition: all 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; position: relative; }
+        .cta-btn:hover { background: transparent; color: white; }
         .footer { position: relative; z-index: 1; border-top: 1px solid #E9E9E7; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; background: #F7F6F3; flex-wrap: wrap; gap: 8px; }
         .footer-left { font-size: 12px; color: #9B9A97; }
         .footer-links { display: flex; gap: 12px; flex-wrap: wrap; }
         .footer-link { font-size: 12px; color: #6B6B6B; cursor: pointer; transition: color 0.2s; }
         .footer-link:hover { color: #4F46E5; }
         input:focus { border-color: #4F46E5 !important; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        @keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-20px) } }
         @media (max-width: 768px) {
           .main-content { flex-direction: column; align-items: center; padding: 24px 16px; gap: 32px; }
-          .left-side { max-width: 100%; }
+          .left-side { max-width: 100%; width: 100%; flex: none; }
+          .right-side { max-width: 100%; width: 100%; flex: none; }
           .divider-vertical { display: none; }
-          .right-side { max-width: 100%; width: 100%; }
           .tagline { font-size: 22px; }
-          .stats-section { gap: 12px; }
+          .features-grid { grid-template-columns: repeat(1, 1fr); }
+          .testimonials-grid { grid-template-columns: repeat(1, 1fr); }
+          .steps-grid { flex-direction: column; }
+          .section { padding: 40px 20px; }
+          .nav-links { display: none; }
+          .cta-section { padding: 50px 20px; }
+          .cta-title { font-size: 24px; }
         }
       `}</style>
 
       <div className="landing-root">
+
+        {/* Floating Particles */}
+        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+          {[...Array(8)].map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: `${8 + i * 4}px`, height: `${8 + i * 4}px`,
+              borderRadius: '50%',
+              background: `radial-gradient(circle, ${['#c7d2fe','#e9d5ff','#fde68a','#c7d2fe'][i % 4]}, transparent)`,
+              left: `${10 + i * 12}%`, top: `${15 + (i * 13) % 70}%`,
+              opacity: 0.4,
+              animation: `float ${4 + i * 0.8}s ease-in-out infinite`,
+              animationDelay: `${i * 0.5}s`
+            }} />
+          ))}
+        </div>
+
         <svg className="doodle-bg" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
           <text x="80" y="120" fontSize="18" fill="#c7d2fe" opacity="0.6">✦</text>
           <text x="320" y="60" fontSize="12" fill="#e9d5ff" opacity="0.5">✦</text>
           <text x="1100" y="80" fontSize="20" fill="#c7d2fe" opacity="0.5">✦</text>
           <text x="1350" y="200" fontSize="14" fill="#fde68a" opacity="0.5">✦</text>
-          <text x="60" y="700" fontSize="16" fill="#e9d5ff" opacity="0.5">✦</text>
-          <text x="1380" y="750" fontSize="18" fill="#c7d2fe" opacity="0.4">✦</text>
           <path d="M 50 300 Q 80 280 110 300 Q 140 320 170 300" stroke="#c7d2fe" strokeWidth="2" fill="none" opacity="0.5"/>
           <path d="M 1250 400 Q 1280 380 1310 400 Q 1340 420 1370 400" stroke="#fde68a" strokeWidth="2" fill="none" opacity="0.5"/>
           <circle cx="1400" cy="100" r="30" stroke="#c7d2fe" strokeWidth="1.5" fill="none" opacity="0.4"/>
-          <circle cx="40" cy="860" r="25" stroke="#e9d5ff" strokeWidth="1.5" fill="none" opacity="0.4"/>
           <text x="1200" y="180" fontSize="20" fill="#c7d2fe" opacity="0.4">+</text>
-          <text x="300" y="750" fontSize="16" fill="#e9d5ff" opacity="0.4">+</text>
           <rect x="1300" y="300" width="20" height="20" rx="4" stroke="#c7d2fe" strokeWidth="1.5" fill="none" opacity="0.4" transform="rotate(15 1310 310)"/>
         </svg>
 
-        <div className="main-content">
-          <div className={`left-side ${logoVisible ? 'visible' : ''}`}>
-            <div className="badge">✦ Your Freelance CRM — Free Forever</div>
-            <img src="/fpt-logo.png" alt="Freelancer Proposal Tracker" className="logo-img" />
-            <h1 className="tagline">Manage your freelance<br />business <span>like a pro.</span></h1>
-            <p className="desc">Freelancer Proposal Tracker is your all-in-one CRM to manage clients, track proposals, monitor deal statuses, and never miss a follow-up — built for freelancers who mean business.</p>
-            <div className="divider" />
-            <div className="stats-row">
-              {[{ value: '500+', label: 'Proposals Tracked' }, { value: '98%', label: 'Client Satisfaction' }, { value: 'Free', label: 'Forever Plan' }].map((s) => (
-                <div key={s.label} className="stat-item">
-                  <div className="stat-value">{s.value}</div>
-                  <div className="stat-label">{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="divider" />
-            <div className="features-list">
-              {['Track proposals from Draft to Won', 'Manage all your clients in one place', 'Get overdue follow-up alerts automatically', 'Visualize your revenue and win rate'].map((f) => (
-                <div key={f} className="feature-item"><div className="feature-dot" />{f}</div>
-              ))}
-            </div>
-            {!isMobile && (
-              <div className="preview-wrap">
-                <div className="preview-label">✦ Live Dashboard Preview</div>
-                <div className="preview-badge">Real-time</div>
-                <img src="/dashboard-preview.png" alt="Dashboard Preview" className="preview-img" />
-              </div>
-            )}
+        {/* Navbar */}
+        <nav style={{
+          position: 'sticky', top: 0, zIndex: 100,
+          backgroundColor: 'rgba(247, 246, 243, 0.9)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid #E9E9E7',
+          padding: '14px 40px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <img src="/fpt-logo.png" alt="logo" style={{ height: '30px' }} />
+          <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+            {['Features', 'How It Works', 'Testimonials'].map((item) => (
+              <a key={item} href={`#${item.toLowerCase().replace(/ /g, '-')}`}
+                style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', textDecoration: 'none', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.target.style.color = '#1e1b4b'}
+                onMouseLeave={e => e.target.style.color = '#64748b'}
+              >{item}</a>
+            ))}
           </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => scrollToForm(true)} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', border: '1.5px solid #E9E9E7', backgroundColor: 'transparent', color: '#37352F', fontFamily: 'inherit' }}>Log in</button>
+            <button onClick={() => scrollToForm(false)} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)', color: 'white', fontFamily: 'inherit' }}>Get Started</button>
+          </div>
+        </nav>
 
-          {!isMobile && <div className="divider-vertical" />}
-
-          <div className={`right-side ${formVisible ? 'visible' : ''}`}>
-            <div style={{ width: '160px', margin: '0 auto -60px auto', position: 'relative', zIndex: 0, animation: 'slideUpBoy 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both' }}>
-              <style>{`@keyframes slideUpBoy { from { transform: translateY(120px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
-              <svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="340" cy="400" rx="70" ry="10" fill="#e2e8f0" opacity="0.6"/>
-                <rect x="295" y="368" width="38" height="16" rx="8" fill="#1e1b4b"/>
-                <rect x="347" y="368" width="38" height="16" rx="8" fill="#1e1b4b"/>
-                <rect x="293" y="280" width="42" height="100" rx="6" fill="#334155"/>
-                <rect x="345" y="280" width="42" height="100" rx="6" fill="#334155"/>
-                <rect x="288" y="278" width="104" height="10" rx="4" fill="#1e293b"/>
-                <rect x="332" y="279" width="16" height="8" rx="2" fill="#f97316"/>
-                <rect x="280" y="190" width="120" height="100" rx="10" fill="#4F46E5"/>
-                <path d="M320 190 L340 215 L360 190" fill="#EEF2FF" opacity="0.5"/>
-                <rect x="240" y="195" width="42" height="28" rx="10" fill="#4F46E5"/>
-                <rect x="230" y="218" width="28" height="70" rx="10" fill="#fbbf8a"/>
-                <rect x="418" y="195" width="42" height="28" rx="10" fill="#4F46E5"/>
-                <rect x="422" y="218" width="28" height="70" rx="10" fill="#fbbf8a"/>
-                <rect x="210" y="260" width="100" height="65" rx="6" fill="#e2e8f0"/>
-                <rect x="215" y="265" width="90" height="52" rx="4" fill="#c7d2fe"/>
-                <rect x="205" y="323" width="110" height="8" rx="4" fill="#cbd5e1"/>
-                <rect x="325" y="168" width="30" height="28" rx="8" fill="#fbbf8a"/>
-                <ellipse cx="340" cy="145" rx="48" ry="52" fill="#fbbf8a"/>
-                <path d="M292 130 Q295 85 340 80 Q385 85 388 130 Q380 105 340 100 Q300 105 292 130Z" fill="#1e1b4b"/>
-                <ellipse cx="322" cy="148" rx="7" ry="8" fill="white"/>
-                <ellipse cx="358" cy="148" rx="7" ry="8" fill="white"/>
-                <circle cx="324" cy="149" r="4" fill="#1e1b4b"/>
-                <circle cx="360" cy="149" r="4" fill="#1e1b4b"/>
-                <circle cx="326" cy="147" r="1.5" fill="white"/>
-                <circle cx="362" cy="147" r="1.5" fill="white"/>
-                <path d="M313 136 Q322 131 331 135" stroke="#1e1b4b" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-                <path d="M349 135 Q358 131 367 136" stroke="#1e1b4b" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-                <path d="M324 165 Q340 178 356 165" stroke="#c2440b" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-                <ellipse cx="292" cy="150" rx="8" ry="10" fill="#fbbf8a"/>
-                <ellipse cx="388" cy="150" rx="8" ry="10" fill="#fbbf8a"/>
-              </svg>
+        {/* Hero */}
+        <div style={{ position: 'relative' }}>
+          <div className="hero-glow" />
+          <div className="main-content">
+            <div className={`left-side ${logoVisible ? 'visible' : ''}`}>
+              <div className="badge">✦ Your Freelance CRM — Free Forever</div>
+              <img src="/fpt-logo.png" alt="Freelancer Proposal Tracker" className="logo-img" />
+              <h1 className="tagline">Manage your freelance<br />business <span>like a pro.</span></h1>
+              <p className="desc">Freelancer Proposal Tracker is your all-in-one CRM to manage clients, track proposals, monitor deal statuses, and never miss a follow-up.</p>
+              <div className="divider" />
+              <div className="stats-row">
+                {[{ value: '500+', label: 'Proposals Tracked' }, { value: '98%', label: 'Client Satisfaction' }, { value: 'Free', label: 'Forever Plan' }].map((s) => (
+                  <div key={s.label}>
+                    <div className="stat-value">{s.value}</div>
+                    <div className="stat-label">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="divider" />
+              <div className="features-list">
+                {['Track proposals from Draft to Won', 'Manage all your clients in one place', 'Get overdue follow-up alerts automatically', 'Visualize your revenue and win rate'].map((f) => (
+                  <div key={f} className="feature-item"><div className="feature-dot" />{f}</div>
+                ))}
+              </div>
+              {!isMobile && (
+                <div className="preview-wrap">
+                  <div className="preview-label">✦ Live Dashboard Preview</div>
+                  <div className="preview-badge">Real-time</div>
+                  <img src="/dashboard-preview.png" alt="Dashboard Preview" className="preview-img" />
+                </div>
+              )}
             </div>
 
-            <div className="form-card" style={{ position: 'relative', zIndex: 1 }}>
-              <h2 className="form-title">{isLogin ? 'Log in' : 'Sign up'}</h2>
-              <p className="form-sub">{isLogin ? 'Welcome back! Enter your credentials.' : 'Create a free account with your email.'}</p>
-              {!isLogin && (
-                <div>
-                  <input style={inputStyle} placeholder="Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                  {errors.name && <p className="error-msg">{errors.name}</p>}
-                </div>
-              )}
-              <div>
-                <input style={inputStyle} placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                {errors.email && <p className="error-msg">{errors.email}</p>}
+            {!isMobile && <div className="divider-vertical" />}
+
+            <div className={`right-side ${formVisible ? 'visible' : ''}`}>
+              <div style={{ width: '160px', margin: '0 auto -60px auto', position: 'relative', zIndex: 0, animation: 'slideUpBoy 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both' }}>
+                <style>{`@keyframes slideUpBoy { from { transform: translateY(120px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
+                <svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg">
+                  <ellipse cx="340" cy="400" rx="70" ry="10" fill="#e2e8f0" opacity="0.6"/>
+                  <rect x="295" y="368" width="38" height="16" rx="8" fill="#1e1b4b"/>
+                  <rect x="347" y="368" width="38" height="16" rx="8" fill="#1e1b4b"/>
+                  <rect x="293" y="280" width="42" height="100" rx="6" fill="#334155"/>
+                  <rect x="345" y="280" width="42" height="100" rx="6" fill="#334155"/>
+                  <rect x="288" y="278" width="104" height="10" rx="4" fill="#1e293b"/>
+                  <rect x="332" y="279" width="16" height="8" rx="2" fill="#f97316"/>
+                  <rect x="280" y="190" width="120" height="100" rx="10" fill="#4F46E5"/>
+                  <path d="M320 190 L340 215 L360 190" fill="#EEF2FF" opacity="0.5"/>
+                  <rect x="240" y="195" width="42" height="28" rx="10" fill="#4F46E5"/>
+                  <rect x="230" y="218" width="28" height="70" rx="10" fill="#fbbf8a"/>
+                  <rect x="418" y="195" width="42" height="28" rx="10" fill="#4F46E5"/>
+                  <rect x="422" y="218" width="28" height="70" rx="10" fill="#fbbf8a"/>
+                  <rect x="210" y="260" width="100" height="65" rx="6" fill="#e2e8f0"/>
+                  <rect x="215" y="265" width="90" height="52" rx="4" fill="#c7d2fe"/>
+                  <rect x="205" y="323" width="110" height="8" rx="4" fill="#cbd5e1"/>
+                  <rect x="325" y="168" width="30" height="28" rx="8" fill="#fbbf8a"/>
+                  <ellipse cx="340" cy="145" rx="48" ry="52" fill="#fbbf8a"/>
+                  <path d="M292 130 Q295 85 340 80 Q385 85 388 130 Q380 105 340 100 Q300 105 292 130Z" fill="#1e1b4b"/>
+                  <ellipse cx="322" cy="148" rx="7" ry="8" fill="white"/>
+                  <ellipse cx="358" cy="148" rx="7" ry="8" fill="white"/>
+                  <circle cx="324" cy="149" r="4" fill="#1e1b4b"/>
+                  <circle cx="360" cy="149" r="4" fill="#1e1b4b"/>
+                  <circle cx="326" cy="147" r="1.5" fill="white"/>
+                  <circle cx="362" cy="147" r="1.5" fill="white"/>
+                  <path d="M313 136 Q322 131 331 135" stroke="#1e1b4b" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                  <path d="M349 135 Q358 131 367 136" stroke="#1e1b4b" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                  <path d="M324 165 Q340 178 356 165" stroke="#c2440b" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                  <ellipse cx="292" cy="150" rx="8" ry="10" fill="#fbbf8a"/>
+                  <ellipse cx="388" cy="150" rx="8" ry="10" fill="#fbbf8a"/>
+                </svg>
               </div>
-              <div>
-                <input style={inputStyle} placeholder="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-                {errors.password && <p className="error-msg">{errors.password}</p>}
-              </div>
-              {!isLogin && (
+
+              <div className="form-card" style={{ position: 'relative', zIndex: 1 }}>
+                <h2 className="form-title">{isLogin ? 'Log in' : 'Sign up'}</h2>
+                <p className="form-sub">{isLogin ? 'Welcome back! Enter your credentials.' : 'Create a free account with your email.'}</p>
+                <button className="social-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                  Continue with Google
+                </button>
+                <button className="social-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#333"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                  Continue with GitHub
+                </button>
+                <div className="divider-or">or</div>
+                {!isLogin && (
+                  <div>
+                    <input style={inputStyle} placeholder="Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                    {errors.name && <p className="error-msg">{errors.name}</p>}
+                  </div>
+                )}
                 <div>
-                  <input style={inputStyle} placeholder="Confirm Password" type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
-                  {errors.confirm && <p className="error-msg">{errors.confirm}</p>}
+                  <input style={inputStyle} placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  {errors.email && <p className="error-msg">{errors.email}</p>}
                 </div>
-              )}
-              <button className="submit-btn" onClick={handleSubmit}>{isLogin ? 'Log in' : 'Sign up'}</button>
-              <p className="toggle-text">
-                {isLogin ? "Don't have an account? " : 'Have an account? '}
-                <span className="toggle-link" onClick={() => { setIsLogin(!isLogin); setErrors({}); setForm({ name: '', email: '', password: '', confirm: '' }) }}>
-                  {isLogin ? 'Sign up' : 'Log in'}
-                </span>
-              </p>
+                <div>
+                  <input style={inputStyle} placeholder="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                  {errors.password && <p className="error-msg">{errors.password}</p>}
+                </div>
+                {!isLogin && (
+                  <div>
+                    <input style={inputStyle} placeholder="Confirm Password" type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+                    {errors.confirm && <p className="error-msg">{errors.confirm}</p>}
+                  </div>
+                )}
+                {isLogin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', marginTop: '4px' }}>
+                    <input type="checkbox" id="remember" />
+                    <label htmlFor="remember" style={{ fontSize: '12px', color: '#64748b', cursor: 'pointer' }}>Remember me</label>
+                  </div>
+                )}
+                <button className="submit-btn" onClick={handleSubmit}>{isLogin ? 'Log in' : 'Sign up'}</button>
+                <p className="toggle-text">
+                  {isLogin ? "Don't have an account? " : 'Have an account? '}
+                  <span className="toggle-link" onClick={() => { setIsLogin(!isLogin); setErrors({}); setForm({ name: '', email: '', password: '', confirm: '' }) }}>
+                    {isLogin ? 'Sign up' : 'Log in'}
+                  </span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -280,6 +448,92 @@ export default function Landing() {
             <AnimatedStatCard key={stat.label} stat={stat} delay={i * 200} />
           ))}
         </div>
+
+        {/* Marquee Strip */}
+        <div className="marquee-wrap">
+          <div className="marquee-track">
+            {[...marqueeItems, ...marqueeItems].map((item, i) => (
+              <span key={i} className="marquee-item">{item}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Features Section */}
+        <div id="features" className="section" style={{ backgroundColor: '#FFFFFF' }}>
+          <RevealDiv>
+            <h2 className="section-title">Everything you need to win more deals</h2>
+            <p className="section-sub">Powerful features built specifically for freelancers</p>
+          </RevealDiv>
+          <div className="features-grid">
+            {features.map((f, i) => (
+              <RevealDiv key={f.title} delay={i * 100}>
+                <TiltCard style={{ height: '100%' }}>
+                  <div className="feature-card" style={{ height: '100%' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '12px' }}>{f.icon}</div>
+                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#1e1b4b', marginBottom: '8px' }}>{f.title}</h3>
+                    <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>{f.desc}</p>
+                  </div>
+                </TiltCard>
+              </RevealDiv>
+            ))}
+          </div>
+        </div>
+
+        {/* How It Works Section */}
+        <div id="how-it-works" className="section">
+          <RevealDiv>
+            <h2 className="section-title">Get started in minutes</h2>
+            <p className="section-sub">Three simple steps to transform your freelance business</p>
+          </RevealDiv>
+          <div className="steps-grid">
+            {steps.map((step, i) => (
+              <RevealDiv key={step.num} delay={i * 150}>
+                <div className="step-card">
+                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>{step.icon}</div>
+                  <div className="step-num">{step.num}</div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1e1b4b', marginBottom: '8px' }}>{step.title}</h3>
+                  <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>{step.desc}</p>
+                </div>
+              </RevealDiv>
+            ))}
+          </div>
+        </div>
+
+        {/* Testimonials Section */}
+        <div id="testimonials" className="section" style={{ backgroundColor: '#FFFFFF' }}>
+          <RevealDiv>
+            <h2 className="section-title">Loved by freelancers worldwide</h2>
+            <p className="section-sub">Join hundreds of freelancers already using FP Tracker</p>
+          </RevealDiv>
+          <div className="testimonials-grid">
+            {testimonials.map((t, i) => (
+              <RevealDiv key={t.name} delay={i * 100}>
+                <div className="testimonial-card">
+                  <p style={{ fontSize: '13px', color: '#475569', lineHeight: '1.7', marginBottom: '16px', fontStyle: 'italic' }}>"{t.quote}"</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ fontSize: '32px' }}>{t.avatar}</div>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '700', color: '#1e1b4b' }}>{t.name}</p>
+                      <p style={{ fontSize: '11px', color: '#94a3b8' }}>{t.role}</p>
+                    </div>
+                    <div style={{ marginLeft: 'auto', color: '#F59E0B', fontSize: '14px' }}>★★★★★</div>
+                  </div>
+                </div>
+              </RevealDiv>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <RevealDiv>
+          <div className="cta-section">
+            <h2 className="cta-title">Ready to win more deals? 🚀</h2>
+            <p className="cta-sub">Join hundreds of freelancers managing their business smarter with FP Tracker</p>
+            <button className="cta-btn" onClick={() => scrollToForm(false)}>
+              Get Started for Free
+            </button>
+          </div>
+        </RevealDiv>
 
         <footer className="footer">
           <div className="footer-left">© 2026 Freelancer Proposal Tracker. All rights reserved.</div>

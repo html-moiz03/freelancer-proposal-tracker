@@ -46,11 +46,11 @@ function Sidebar() {
       <style>{`
         .btn-color-mode-switch { display: inline-block; margin: 0; position: relative; }
         .btn-color-mode-switch > label.btn-color-mode-switch-inner { margin: 0; width: 110px; height: 32px; background: #E0E0E0; border-radius: 26px; overflow: hidden; position: relative; transition: all 0.3s ease; display: block; cursor: pointer; }
-        .btn-color-mode-switch > label.btn-color-mode-switch-inner:before { content: attr(data-on); position: absolute; font-size: 11px; font-weight: 500; top: 7px; right: 14px; color: #fff; }
-        .btn-color-mode-switch > label.btn-color-mode-switch-inner:after { content: attr(data-off); width: 60px; height: 20px; background: #fff; border-radius: 26px; position: absolute; left: 2px; top: 4px; text-align: center; transition: all 0.3s ease; box-shadow: 0px 0px 6px -2px #111; padding: 5px 0; font-size: 11px; font-weight: 500; }
+        .btn-color-mode-switch > label.btn-color-mode-switch-inner:before { content: attr(data-on); position: absolute; font-size: 11px; font-weight: 500; top: 7px; right: 14px; color: #555; }
+        .btn-color-mode-switch > label.btn-color-mode-switch-inner:after { content: attr(data-off); width: 60px; height: 24px; background: #fff; border-radius: 26px; position: absolute; left: 2px; top: 3px; text-align: center; transition: all 0.3s ease; box-shadow: 0px 0px 6px -2px #111; padding: 4px 0; font-size: 11px; font-weight: 500; line-height: 1.4; }
         .btn-color-mode-switch input[type="checkbox"] { cursor: pointer; width: 50px; height: 25px; opacity: 0; position: absolute; top: 0; z-index: 1; margin: 0; }
         .btn-color-mode-switch input[type="checkbox"]:checked + label.btn-color-mode-switch-inner { background: #151515; color: #fff; }
-        .btn-color-mode-switch input[type="checkbox"]:checked + label.btn-color-mode-switch-inner:after { content: attr(data-on); left: 48px; background: #3c3c3c; color: #fff; }
+        .btn-color-mode-switch input[type="checkbox"]:checked + label.btn-color-mode-switch-inner:after { content: attr(data-on); left: 46px; background: #3c3c3c; color: #fff; }
         .btn-color-mode-switch input[type="checkbox"]:checked + label.btn-color-mode-switch-inner:before { content: attr(data-off); right: auto; left: 14px; color: #aaa; }
       `}</style>
 
