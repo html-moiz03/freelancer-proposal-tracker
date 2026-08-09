@@ -13,27 +13,27 @@ const ACCENT_COLORS = [
 ]
 
 function SectionTitle({ children, titleColor }) {
-  return (
-    <h3 className="text-base font-bold mb-4" style={{ color: titleColor }}>{children}</h3>
-  )
+  return <h3 className="text-base font-bold mb-4" style={{ color: titleColor }}>{children}</h3>
 }
 
 function Label({ children, titleColor }) {
-  return (
-    <label className="text-sm font-medium block mb-1" style={{ color: titleColor }}>{children}</label>
-  )
+  return <label className="text-sm font-medium block mb-1" style={{ color: titleColor }}>{children}</label>
 }
 
 export default function Settings() {
+  const { isDark, toggleTheme, updateAccent, accent } = useTheme()
   const { showToast } = useToast()
-  const { clients, proposals, followups, currency, setCurrency } = useApp()
+  const { clients, proposals, followups, setCurrency } = useApp()
 
+  const [currencyState, setCurrencyState] = useState(localStorage.getItem('fpt_currency') || 'PKR')
   const [dateFormat, setDateFormat] = useState(localStorage.getItem('fpt_date_format') || 'YYYY-MM-DD')
   const [reminderDays, setReminderDays] = useState(localStorage.getItem('fpt_reminder_days') || '3')
-  const { isDark, toggleTheme, updateAccent, accent } = useTheme()
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showOld, setShowOld] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const card = { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
   const titleColor = isDark ? '#ffffff' : '#37352F'
@@ -42,15 +42,14 @@ export default function Settings() {
     width: '100%', padding: '9px 12px', borderRadius: '8px',
     border: `1.5px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
     backgroundColor: isDark ? '#111111' : '#F7F6F3',
-    color: titleColor, fontSize: '13px', outline: 'none',
-    fontFamily: 'inherit'
+    color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit'
   }
 
   const savePreferences = () => {
-    localStorage.setItem('fpt_currency', currency)
+    localStorage.setItem('fpt_currency', currencyState)
     localStorage.setItem('fpt_date_format', dateFormat)
     localStorage.setItem('fpt_reminder_days', reminderDays)
-    setCurrency(currency)
+    setCurrency(currencyState)
     showToast('Preferences saved!', 'success')
   }
 
@@ -102,20 +101,20 @@ export default function Settings() {
 
   const changePassword = () => {
     const user = JSON.parse(localStorage.getItem('fpt_user') || '{}')
-    if (oldPassword !== user.password) {
-      showToast('Current password is incorrect!', 'error'); return
-    }
-    if (newPassword.length < 6) {
-      showToast('New password must be at least 6 characters!', 'error'); return
-    }
-    if (newPassword !== confirmPassword) {
-      showToast('Passwords do not match!', 'error'); return
-    }
+    if (oldPassword !== user.password) { showToast('Current password is incorrect!', 'error'); return }
+    if (newPassword.length < 6) { showToast('New password must be at least 6 characters!', 'error'); return }
+    if (newPassword !== confirmPassword) { showToast('Passwords do not match!', 'error'); return }
     const updated = { ...user, password: newPassword }
     localStorage.setItem('fpt_user', JSON.stringify(updated))
     localStorage.setItem('fpt_session', JSON.stringify(updated))
     setOldPassword(''); setNewPassword(''); setConfirmPassword('')
     showToast('Password changed successfully!', 'success')
+  }
+
+  const eyeStyle = {
+    position: 'absolute', right: '12px', top: '50%',
+    transform: 'translateY(-50%)', cursor: 'pointer',
+    fontSize: '16px', color: subColor
   }
 
   return (
@@ -128,7 +127,7 @@ export default function Settings() {
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <Label titleColor={titleColor}>Currency</Label>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={inputStyle}>
+            <select value={currencyState} onChange={(e) => setCurrencyState(e.target.value)} style={inputStyle}>
               <option value="PKR">PKR — Pakistani Rupee</option>
               <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
@@ -155,11 +154,7 @@ export default function Settings() {
             </select>
           </div>
         </div>
-        <button
-          onClick={savePreferences}
-          className="px-5 py-2 rounded-lg text-sm font-medium"
-          style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}
-        >
+        <button onClick={savePreferences} className="px-5 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}>
           Save Preferences
         </button>
       </div>
@@ -167,41 +162,20 @@ export default function Settings() {
       {/* Appearance */}
       <div className="rounded-xl p-6 border mb-4" style={card}>
         <SectionTitle titleColor={titleColor}>🎨 Appearance</SectionTitle>
-
         <div className="flex items-center justify-between mb-5 p-3 rounded-lg" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3' }}>
           <div>
             <p className="text-sm font-medium" style={{ color: titleColor }}>Dark Mode</p>
             <p className="text-xs" style={{ color: subColor }}>Switch between light and dark theme</p>
           </div>
-          <div
-            onClick={toggleTheme}
-            style={{
-              width: '44px', height: '24px', borderRadius: '99px',
-              backgroundColor: isDark ? '#4F46E5' : '#E9E9E7',
-              position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s'
-            }}
-          >
-            <div style={{
-              width: '18px', height: '18px', borderRadius: '50%',
-              backgroundColor: 'white', position: 'absolute', top: '3px',
-              left: isDark ? '23px' : '3px', transition: 'left 0.2s'
-            }} />
+          <div onClick={toggleTheme} style={{ width: '44px', height: '24px', borderRadius: '99px', backgroundColor: isDark ? '#4F46E5' : '#E9E9E7', position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s' }}>
+            <div style={{ width: '18px', height: '18px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '3px', left: isDark ? '23px' : '3px', transition: 'left 0.2s' }} />
           </div>
         </div>
-
         <Label titleColor={titleColor}>Accent Color</Label>
         <div className="flex gap-3 flex-wrap mt-2">
           {ACCENT_COLORS.map((color) => (
-            <div
-              key={color.value}
-              onClick={() => saveAccent(color.value)}
-              style={{
-                width: '32px', height: '32px', borderRadius: '50%',
-                backgroundColor: color.value, cursor: 'pointer',
-                border: accent === color.value ? '3px solid #37352F' : '3px solid transparent',
-                boxShadow: accent === color.value ? '0 0 0 2px white, 0 0 0 4px ' + color.value : 'none',
-                transition: 'all 0.2s'
-              }}
+            <div key={color.value} onClick={() => saveAccent(color.value)}
+              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: color.value, cursor: 'pointer', border: accent === color.value ? '3px solid #37352F' : '3px solid transparent', boxShadow: accent === color.value ? '0 0 0 2px white, 0 0 0 4px ' + color.value : 'none', transition: 'all 0.2s' }}
               title={color.name}
             />
           ))}
@@ -213,11 +187,7 @@ export default function Settings() {
       <div className="rounded-xl p-6 border mb-4" style={card}>
         <SectionTitle titleColor={titleColor}>💾 Data Management</SectionTitle>
         <div className="flex gap-4 mb-4">
-          {[
-            { label: 'Clients', value: clients.length },
-            { label: 'Proposals', value: proposals.length },
-            { label: 'Follow-ups', value: followups.length },
-          ].map((s) => (
+          {[{ label: 'Clients', value: clients.length }, { label: 'Proposals', value: proposals.length }, { label: 'Follow-ups', value: followups.length }].map((s) => (
             <div key={s.label} className="text-center px-4 py-2 rounded-lg" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3' }}>
               <p className="text-lg font-bold" style={{ color: titleColor }}>{s.value}</p>
               <p className="text-xs" style={{ color: subColor }}>{s.label}</p>
@@ -225,17 +195,12 @@ export default function Settings() {
           ))}
         </div>
         <div className="flex flex-col gap-3">
-          <button
-            onClick={exportJSON}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border w-fit"
-            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
-          >
+          <button onClick={exportJSON} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border w-fit"
+            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>
             📤 Export All Data as JSON
           </button>
-          <label
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border w-fit cursor-pointer"
-            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
-          >
+          <label className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border w-fit cursor-pointer"
+            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>
             📥 Import Data from JSON
             <input type="file" accept=".json" onChange={importJSON} style={{ display: 'none' }} />
           </label>
@@ -248,21 +213,26 @@ export default function Settings() {
         <div className="flex flex-col gap-3">
           <div>
             <Label titleColor={titleColor}>Current Password</Label>
-            <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="Enter current password" style={inputStyle} />
+            <div style={{ position: 'relative' }}>
+              <input type={showOld ? 'text' : 'password'} value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="Enter current password" style={{ ...inputStyle, paddingRight: '40px' }} />
+              <span onClick={() => setShowOld(!showOld)} style={eyeStyle}>{showOld ? '🙈' : '👁️'}</span>
+            </div>
           </div>
           <div>
             <Label titleColor={titleColor}>New Password</Label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" style={inputStyle} />
+            <div style={{ position: 'relative' }}>
+              <input type={showNew ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" style={{ ...inputStyle, paddingRight: '40px' }} />
+              <span onClick={() => setShowNew(!showNew)} style={eyeStyle}>{showNew ? '🙈' : '👁️'}</span>
+            </div>
           </div>
           <div>
             <Label titleColor={titleColor}>Confirm New Password</Label>
-            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" style={inputStyle} />
+            <div style={{ position: 'relative' }}>
+              <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" style={{ ...inputStyle, paddingRight: '40px' }} />
+              <span onClick={() => setShowConfirm(!showConfirm)} style={eyeStyle}>{showConfirm ? '🙈' : '👁️'}</span>
+            </div>
           </div>
-          <button
-            onClick={changePassword}
-            className="px-5 py-2 rounded-lg text-sm font-medium w-fit"
-            style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}
-          >
+          <button onClick={changePassword} className="px-5 py-2 rounded-lg text-sm font-medium w-fit" style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}>
             Change Password
           </button>
         </div>
@@ -271,12 +241,8 @@ export default function Settings() {
       {/* Danger Zone */}
       <div className="rounded-xl p-6 border" style={{ backgroundColor: isDark ? '#1a0000' : '#FFF5F5', borderColor: '#FECACA' }}>
         <SectionTitle titleColor="#991B1B">⚠️ Danger Zone</SectionTitle>
-        <p className="text-sm mb-4" style={{ color: subColor }}>This will permanently delete all your clients, proposals, and follow-ups. This action cannot be undone.</p>
-        <button
-          onClick={resetApp}
-          className="px-5 py-2 rounded-lg text-sm font-medium"
-          style={{ backgroundColor: '#EF4444', color: '#FFFFFF' }}
-        >
+        <p className="text-sm mb-4" style={{ color: subColor }}>This will permanently delete all your clients, proposals, and follow-ups.</p>
+        <button onClick={resetApp} className="px-5 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#EF4444', color: '#FFFFFF' }}>
           🗑️ Reset All Data
         </button>
       </div>

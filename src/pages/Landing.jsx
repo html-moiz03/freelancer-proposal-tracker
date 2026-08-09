@@ -94,6 +94,8 @@ export default function Landing() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({})
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [showPass, setShowPass] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
     const user = localStorage.getItem('fpt_session')
@@ -411,12 +413,22 @@ export default function Landing() {
                   {errors.email && <p className="error-msg">{errors.email}</p>}
                 </div>
                 <div>
-                  <input style={inputStyle} placeholder="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                  <div style={{ position: 'relative', marginBottom: '4px' }}>
+                    <input style={{ ...inputStyle, marginBottom: '0', paddingRight: '40px' }} placeholder="Password" type={showPass ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                    <span onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', fontSize: '16px', color: '#94a3b8', zIndex: 10 }}>
+                      {showPass ? '🙈' : '👁️'}
+                    </span>
+                  </div>
                   {errors.password && <p className="error-msg">{errors.password}</p>}
                 </div>
                 {!isLogin && (
                   <div>
-                    <input style={inputStyle} placeholder="Confirm Password" type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+                    <div style={{ position: 'relative' }}>
+                      <input style={{ ...inputStyle, marginBottom: '0', paddingRight: '40px' }} placeholder="Confirm Password" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+                      <span onClick={() => setShowConfirm(!showConfirm)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', fontSize: '16px', color: '#94a3b8', zIndex: 10 }}>
+                        {showConfirm ? '🙈' : '👁️'}
+                      </span>
+                    </div>
                     {errors.confirm && <p className="error-msg">{errors.confirm}</p>}
                   </div>
                 )}
