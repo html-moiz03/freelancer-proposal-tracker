@@ -4,21 +4,28 @@ import { useNavigate } from 'react-router-dom'
 function AnimatedStatCard({ stat, delay }) {
   const [count, setCount] = useState(0)
   const [visible, setVisible] = useState(false)
+  const ref = useRef(null)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setVisible(true)
-      let i = 0
-      const step = Math.ceil(stat.value / (1500 / 16))
-      const counter = setInterval(() => {
-        i += step
-        if (i >= stat.value) { setCount(stat.value); clearInterval(counter) }
-        else setCount(i)
-      }, 16)
-    }, delay + 600)
-    return () => clearTimeout(timer)
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        observer.disconnect()
+        setTimeout(() => {
+          setVisible(true)
+          let i = 0
+          const step = Math.ceil(stat.value / (1500 / 16))
+          const counter = setInterval(() => {
+            i += step
+            if (i >= stat.value) { setCount(stat.value); clearInterval(counter) }
+            else setCount(i)
+          }, 16)
+        }, delay)
+      }
+    }, { threshold: 0.1 })
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
   }, [delay, stat.value])
   return (
-    <div style={{
+    <div ref={ref} style={{
       width: '160px', borderRadius: '120px 120px 20px 20px',
       backgroundColor: stat.color, padding: '30px 16px 24px', textAlign: 'center',
       transform: visible ? 'translateY(0)' : 'translateY(40px)',
@@ -54,9 +61,7 @@ function RevealDiv({ children, delay = 0, style = {} }) {
       opacity: visible ? 1 : 0,
       transition: `all 0.7s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
       ...style
-    }}>
-      {children}
-    </div>
+    }}>{children}</div>
   )
 }
 
@@ -67,16 +72,14 @@ function TiltCard({ children, style = {} }) {
     const rect = card.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    const rotateX = (y - centerY) / 10
-    const rotateY = (centerX - x) / 10
+    const rotateX = (y - rect.height / 2) / 10
+    const rotateY = (rect.width / 2 - x) / 10
     card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`
     card.style.boxShadow = '0 20px 60px rgba(0,0,0,0.12)'
   }
   const handleMouseLeave = () => {
     cardRef.current.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)'
-    cardRef.current.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'
+    cardRef.current.style.boxShadow = 'none'
   }
   return (
     <div ref={cardRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}
@@ -96,6 +99,9 @@ export default function Landing() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [activeTab, setActiveTab] = useState('Dashboard')
+  const [openFaq, setOpenFaq] = useState(null)
 
   useEffect(() => {
     const user = localStorage.getItem('fpt_session')
@@ -104,7 +110,16 @@ export default function Landing() {
     setTimeout(() => setFormVisible(true), 400)
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    const handleScroll = () => {
+      const el = document.documentElement
+      const progress = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100
+      setScrollProgress(progress)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [navigate])
 
   const validate = () => {
@@ -138,16 +153,14 @@ export default function Landing() {
 
   const scrollToForm = (login) => {
     setIsLogin(login)
-    setTimeout(() => {
-      document.querySelector('.form-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 100)
+    setTimeout(() => document.querySelector('.form-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
   }
 
   const inputStyle = {
     width: '100%', padding: '11px 14px', borderRadius: '10px',
     border: '1.5px solid #E2E8F0', backgroundColor: '#FFFFFF',
     fontSize: '14px', color: '#1e1b4b', outline: 'none',
-    boxSizing: 'border-box', marginBottom: '4px',
+    boxSizing: 'border-box', marginBottom: '0',
     transition: 'border-color 0.2s', fontFamily: 'Plus Jakarta Sans, sans-serif'
   }
 
@@ -173,6 +186,23 @@ export default function Landing() {
   ]
 
   const marqueeItems = ['✦ Kanban Board', '✦ PDF Export', '✦ Dark Mode', '✦ CSV Export', '✦ Client Rating', '✦ Activity Log', '✦ Proposal Templates', '✦ Global Search', '✦ Revenue Charts', '✦ Follow-up Reminders', '✦ Confetti on Win', '✦ Quick Add']
+
+  const tabs = ['Dashboard', 'Proposals', 'Kanban', 'Settings']
+  const tabImages = {
+    Dashboard: '/dashboard-preview.png',
+    Proposals: '/proposals-preview.png',
+    Kanban: '/kanban-preview.png',
+    Settings: '/settings-preview.png',
+  }
+
+  const faqs = [
+    { q: 'Is FP Tracker really free?', a: 'Yes! FP Tracker is completely free forever. No credit card required, no hidden fees.' },
+    { q: 'Is my data safe?', a: 'Your data is stored locally in your browser using localStorage. You can also export a full JSON backup anytime from Settings.' },
+    { q: 'Can I use it on mobile?', a: 'Absolutely! FP Tracker is fully responsive with a mobile-friendly sidebar and layout optimized for all screen sizes.' },
+    { q: 'Can I export my proposals?', a: 'Yes! You can export individual proposals as branded PDFs, or export all clients and proposals as CSV or JSON files.' },
+    { q: 'Does it support multiple currencies?', a: 'Yes! You can switch between PKR, USD, EUR, GBP, and AED from the Settings page.' },
+    { q: 'Can I customize the appearance?', a: 'Yes! You can switch between light and dark mode, and choose from 6 accent colors in the Settings page.' },
+  ]
 
   return (
     <>
@@ -206,7 +236,9 @@ export default function Landing() {
         .right-side { flex-shrink: 0; width: 100%; max-width: 380px; transform: translateY(60px); opacity: 0; transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s; }
         .right-side.visible { transform: translateY(0); opacity: 1; }
         .divider-vertical { width: 1px; align-self: stretch; background: linear-gradient(to bottom, transparent, #e2e8f0 30%, #e2e8f0 70%, transparent); flex-shrink: 0; }
-        .form-card { background: #FFFFFF; border-radius: 20px; padding: 32px 28px; box-shadow: 0 4px 40px rgba(124,58,237,0.08); border: 1px solid #f1f5f9; }
+        .form-card { background: #FFFFFF; border-radius: 20px; padding: 32px 28px; border: 1px solid #f1f5f9; position: relative; }
+        .form-card::before { content: ''; position: absolute; inset: -2px; border-radius: 22px; background: linear-gradient(135deg, #7c3aed, #4F46E5, #f97316, #7c3aed); background-size: 300% 300%; animation: borderRotate 4s linear infinite; z-index: -1; }
+        @keyframes borderRotate { 0% { background-position: 0% 50% } 50% { background-position: 100% 50% } 100% { background-position: 0% 50% } }
         .form-title { font-size: 22px; font-weight: 800; color: #1e1b4b; margin-bottom: 6px; text-align: center; }
         .form-sub { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 20px; line-height: 1.5; }
         .social-btn { width: 100%; padding: 11px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #FFFFFF; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: #374151; font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.2s; margin-bottom: 8px; }
@@ -214,8 +246,8 @@ export default function Landing() {
         .divider-or { display: flex; align-items: center; gap: 12px; margin: 12px 0; color: #94a3b8; font-size: 12px; }
         .divider-or::before, .divider-or::after { content: ''; flex: 1; height: 1px; background: #E2E8F0; }
         .error-msg { font-size: 11px; color: #dc2626; margin-bottom: 8px; padding-left: 2px; }
-        .submit-btn { width: 100%; padding: 13px; border-radius: 50px; border: none; background: linear-gradient(135deg, #4F46E5, #7c3aed); color: white; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity 0.2s, transform 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .submit-btn { width: 100%; padding: 13px; border-radius: 50px; border: none; background: linear-gradient(135deg, #4F46E5, #7c3aed); color: white; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 0 20px rgba(124,58,237,0.4); }
+        .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 0 35px rgba(124,58,237,0.6); }
         .toggle-text { text-align: center; font-size: 13px; color: #64748b; margin-top: 20px; }
         .toggle-link { color: #4F46E5; font-weight: 700; cursor: pointer; }
         .toggle-link:hover { text-decoration: underline; }
@@ -228,18 +260,25 @@ export default function Landing() {
         .section-title { font-size: 28px; font-weight: 800; color: #1e1b4b; text-align: center; margin-bottom: 8px; }
         .section-sub { font-size: 14px; color: #64748b; text-align: center; margin-bottom: 40px; }
         .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 900px; margin: 0 auto; }
-        .feature-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; border: 1px solid rgba(233,233,231,0.8); cursor: default; }
+        .feature-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; border: 1px solid rgba(233,233,231,0.8); cursor: default; height: 100%; }
         .steps-grid { display: flex; gap: 24px; max-width: 800px; margin: 0 auto; justify-content: center; flex-wrap: wrap; }
         .step-card { flex: 1; min-width: 200px; text-align: center; position: relative; }
         .step-num { font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #7c3aed, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; margin-bottom: 12px; }
         .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 900px; margin: 0 auto; }
         .testimonial-card { background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; border: 1px solid rgba(233,233,231,0.8); }
+        .trust-badges { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 32px; }
+        .trust-badge { display: flex; align-items: center; gap: 8px; padding: 8px 16px; borderRadius: 50px; background: #FFFFFF; border: 1px solid #E9E9E7; font-size: 12px; font-weight: 600; color: #475569; border-radius: 50px; }
+        .pricing-card { background: #FFFFFF; border-radius: 20px; padding: 32px; border: 2px solid #4F46E5; max-width: 360px; margin: 0 auto; position: relative; box-shadow: 0 8px 40px rgba(79,70,229,0.12); }
+        .pricing-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #4F46E5, #7c3aed); color: white; font-size: 12px; font-weight: 700; padding: 4px 16px; border-radius: 20px; white-space: nowrap; }
+        .faq-item { border-bottom: 1px solid #E9E9E7; padding: 16px 0; cursor: pointer; max-width: 700px; margin: 0 auto; }
+        .faq-q { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; color: #1e1b4b; }
+        .faq-a { font-size: 13px; color: #64748b; line-height: 1.7; margin-top: 10px; }
+        .tab-btn { padding: 8px 20px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; }
         .cta-section { position: relative; z-index: 1; padding: 80px 40px; text-align: center; background: linear-gradient(135deg, #4F46E5, #7c3aed); overflow: hidden; }
-        .cta-section::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
         .cta-title { font-size: 32px; font-weight: 800; color: white; margin-bottom: 12px; position: relative; }
         .cta-sub { font-size: 15px; color: rgba(255,255,255,0.8); margin-bottom: 32px; position: relative; }
-        .cta-btn { padding: 14px 36px; border-radius: 50px; border: 2px solid white; background: white; color: #4F46E5; font-size: 15px; font-weight: 800; cursor: pointer; transition: all 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; position: relative; }
-        .cta-btn:hover { background: transparent; color: white; }
+        .cta-btn { padding: 14px 36px; border-radius: 50px; border: 2px solid white; background: white; color: #4F46E5; font-size: 15px; font-weight: 800; cursor: pointer; transition: all 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; position: relative; box-shadow: 0 0 30px rgba(255,255,255,0.3); }
+        .cta-btn:hover { background: transparent; color: white; box-shadow: 0 0 50px rgba(255,255,255,0.5); }
         .footer { position: relative; z-index: 1; border-top: 1px solid #E9E9E7; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; background: #F7F6F3; flex-wrap: wrap; gap: 8px; }
         .footer-left { font-size: 12px; color: #9B9A97; }
         .footer-links { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -264,6 +303,14 @@ export default function Landing() {
       `}</style>
 
       <div className="landing-root">
+
+        {/* Scroll Progress Bar */}
+        <div style={{
+          position: 'fixed', top: 0, left: 0, zIndex: 9999,
+          height: '3px', width: `${scrollProgress}%`,
+          background: 'linear-gradient(135deg, #7c3aed, #4F46E5, #f97316)',
+          transition: 'width 0.1s ease'
+        }} />
 
         {/* Floating Particles */}
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
@@ -304,7 +351,7 @@ export default function Landing() {
         }}>
           <img src="/fpt-logo.png" alt="logo" style={{ height: '30px' }} />
           <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
-            {['Features', 'How It Works', 'Testimonials'].map((item) => (
+            {['Features', 'How It Works', 'Testimonials', 'Pricing', 'FAQ'].map((item) => (
               <a key={item} href={`#${item.toLowerCase().replace(/ /g, '-')}`}
                 style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', textDecoration: 'none', transition: 'color 0.2s' }}
                 onMouseEnter={e => e.target.style.color = '#1e1b4b'}
@@ -314,7 +361,7 @@ export default function Landing() {
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => scrollToForm(true)} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', border: '1.5px solid #E9E9E7', backgroundColor: 'transparent', color: '#37352F', fontFamily: 'inherit' }}>Log in</button>
-            <button onClick={() => scrollToForm(false)} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)', color: 'white', fontFamily: 'inherit' }}>Get Started</button>
+            <button onClick={() => scrollToForm(false)} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)', color: 'white', fontFamily: 'inherit', boxShadow: '0 0 20px rgba(124,58,237,0.4)' }}>Get Started</button>
           </div>
         </nav>
 
@@ -403,18 +450,18 @@ export default function Landing() {
                 </button>
                 <div className="divider-or">or</div>
                 {!isLogin && (
-                  <div>
+                  <div style={{ marginBottom: '8px' }}>
                     <input style={inputStyle} placeholder="Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                     {errors.name && <p className="error-msg">{errors.name}</p>}
                   </div>
                 )}
-                <div>
+                <div style={{ marginBottom: '8px' }}>
                   <input style={inputStyle} placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                   {errors.email && <p className="error-msg">{errors.email}</p>}
                 </div>
-                <div>
-                  <div style={{ position: 'relative', marginBottom: '4px' }}>
-                    <input style={{ ...inputStyle, marginBottom: '0', paddingRight: '40px' }} placeholder="Password" type={showPass ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input style={{ ...inputStyle, paddingRight: '40px' }} placeholder="Password" type={showPass ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
                     <span onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', fontSize: '16px', color: '#94a3b8', zIndex: 10 }}>
                       {showPass ? '🙈' : '👁️'}
                     </span>
@@ -422,9 +469,9 @@ export default function Landing() {
                   {errors.password && <p className="error-msg">{errors.password}</p>}
                 </div>
                 {!isLogin && (
-                  <div>
+                  <div style={{ marginBottom: '8px' }}>
                     <div style={{ position: 'relative' }}>
-                      <input style={{ ...inputStyle, marginBottom: '0', paddingRight: '40px' }} placeholder="Confirm Password" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+                      <input style={{ ...inputStyle, paddingRight: '40px' }} placeholder="Confirm Password" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
                       <span onClick={() => setShowConfirm(!showConfirm)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', fontSize: '16px', color: '#94a3b8', zIndex: 10 }}>
                         {showConfirm ? '🙈' : '👁️'}
                       </span>
@@ -480,7 +527,7 @@ export default function Landing() {
             {features.map((f, i) => (
               <RevealDiv key={f.title} delay={i * 100}>
                 <TiltCard style={{ height: '100%' }}>
-                  <div className="feature-card" style={{ height: '100%' }}>
+                  <div className="feature-card">
                     <div style={{ fontSize: '32px', marginBottom: '12px' }}>{f.icon}</div>
                     <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#1e1b4b', marginBottom: '8px' }}>{f.title}</h3>
                     <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>{f.desc}</p>
@@ -489,10 +536,51 @@ export default function Landing() {
               </RevealDiv>
             ))}
           </div>
+
+          {/* Trust Badges */}
+          <RevealDiv delay={200}>
+            <div className="trust-badges">
+              {['🔒 100% Secure', '📱 Mobile Friendly', '⚡ Lightning Fast', '🌙 Dark Mode', '📤 Export Ready', '🆓 Free Forever'].map((badge) => (
+                <div key={badge} className="trust-badge">{badge}</div>
+              ))}
+            </div>
+          </RevealDiv>
         </div>
 
-        {/* How It Works Section */}
-        <div id="how-it-works" className="section">
+        {/* Live Preview Tabs */}
+        <div className="section">
+          <RevealDiv>
+            <h2 className="section-title">See it in action</h2>
+            <p className="section-sub">Explore different parts of the app</p>
+          </RevealDiv>
+          <RevealDiv delay={100}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+              {tabs.map((tab) => (
+                <button key={tab} className="tab-btn" onClick={() => setActiveTab(tab)}
+                  style={{
+                    backgroundColor: activeTab === tab ? '#4F46E5' : '#FFFFFF',
+                    color: activeTab === tab ? 'white' : '#64748b',
+                    border: activeTab === tab ? 'none' : '1px solid #E9E9E7',
+                    boxShadow: activeTab === tab ? '0 4px 12px rgba(79,70,229,0.3)' : 'none'
+                  }}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div style={{ maxWidth: '800px', margin: '0 auto', borderRadius: '16px', overflow: 'hidden', border: '1px solid #E9E9E7', boxShadow: '0 20px 60px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: '#f1f3f4', padding: '10px 16px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f57' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#febc2e' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#28c840' }} />
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: '#64748b' }}>freelancer-proposal-tracker.netlify.app/{activeTab.toLowerCase()}</span>
+              </div>
+              <img src={tabImages[activeTab]} alt={activeTab} style={{ width: '100%', display: 'block' }} />
+            </div>
+          </RevealDiv>
+        </div>
+
+        {/* How It Works */}
+        <div id="how-it-works" className="section" style={{ backgroundColor: '#FFFFFF' }}>
           <RevealDiv>
             <h2 className="section-title">Get started in minutes</h2>
             <p className="section-sub">Three simple steps to transform your freelance business</p>
@@ -511,8 +599,8 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Testimonials Section */}
-        <div id="testimonials" className="section" style={{ backgroundColor: '#FFFFFF' }}>
+        {/* Testimonials */}
+        <div id="testimonials" className="section">
           <RevealDiv>
             <h2 className="section-title">Loved by freelancers worldwide</h2>
             <p className="section-sub">Join hundreds of freelancers already using FP Tracker</p>
@@ -536,14 +624,64 @@ export default function Landing() {
           </div>
         </div>
 
+        {/* Pricing Section */}
+        <div id="pricing" className="section" style={{ backgroundColor: '#FFFFFF' }}>
+          <RevealDiv>
+            <h2 className="section-title">Simple, transparent pricing</h2>
+            <p className="section-sub">No hidden fees. No credit card required.</p>
+          </RevealDiv>
+          <RevealDiv delay={100}>
+            <div className="pricing-card">
+              <div className="pricing-badge">🎉 Most Popular</div>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ fontSize: '48px', fontWeight: '800', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Free</div>
+                <div style={{ fontSize: '14px', color: '#64748b' }}>Forever. No credit card needed.</div>
+              </div>
+              {[
+                '✅ Unlimited Clients', '✅ Unlimited Proposals', '✅ Kanban Board',
+                '✅ PDF & CSV Export', '✅ Dark Mode', '✅ Analytics Dashboard',
+                '✅ Activity Log', '✅ Proposal Templates', '✅ Global Search',
+                '✅ Mobile Responsive', '✅ Data Backup & Restore'
+              ].map((feature) => (
+                <div key={feature} style={{ fontSize: '13px', color: '#374151', padding: '6px 0', borderBottom: '1px solid #F1F0EE' }}>{feature}</div>
+              ))}
+              <button onClick={() => scrollToForm(false)} style={{
+                width: '100%', marginTop: '20px', padding: '13px', borderRadius: '50px',
+                border: 'none', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)',
+                color: 'white', fontSize: '15px', fontWeight: '700', cursor: 'pointer',
+                fontFamily: 'inherit', boxShadow: '0 0 20px rgba(124,58,237,0.4)'
+              }}>Get Started for Free</button>
+            </div>
+          </RevealDiv>
+        </div>
+
+        {/* FAQ Section */}
+        <div id="faq" className="section">
+          <RevealDiv>
+            <h2 className="section-title">Frequently Asked Questions</h2>
+            <p className="section-sub">Everything you need to know about FP Tracker</p>
+          </RevealDiv>
+          <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+            {faqs.map((faq, i) => (
+              <RevealDiv key={i} delay={i * 50}>
+                <div className="faq-item" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                  <div className="faq-q">
+                    <span>{faq.q}</span>
+                    <span style={{ fontSize: '18px', color: '#4F46E5', transition: 'transform 0.2s', transform: openFaq === i ? 'rotate(45deg)' : 'rotate(0)' }}>+</span>
+                  </div>
+                  {openFaq === i && <div className="faq-a">{faq.a}</div>}
+                </div>
+              </RevealDiv>
+            ))}
+          </div>
+        </div>
+
         {/* CTA Section */}
         <RevealDiv>
           <div className="cta-section">
             <h2 className="cta-title">Ready to win more deals? 🚀</h2>
             <p className="cta-sub">Join hundreds of freelancers managing their business smarter with FP Tracker</p>
-            <button className="cta-btn" onClick={() => scrollToForm(false)}>
-              Get Started for Free
-            </button>
+            <button className="cta-btn" onClick={() => scrollToForm(false)}>Get Started for Free</button>
           </div>
         </RevealDiv>
 
