@@ -9,6 +9,7 @@ export default function GlobalSearch() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const inputRef = useRef(null)
 
   const titleColor = isDark ? '#ffffff' : '#37352F'
@@ -16,16 +17,20 @@ export default function GlobalSearch() {
   const cardBg = isDark ? '#1a1a1a' : '#FFFFFF'
   const borderColor = isDark ? '#2a2a2a' : '#E9E9E7'
 
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const results = query.trim().length < 2 ? [] : [
     ...clients.filter(c =>
       c.name.toLowerCase().includes(query.toLowerCase()) ||
       c.email.toLowerCase().includes(query.toLowerCase())
     ).map(c => ({ type: 'Client', icon: '👤', label: c.name, sub: c.email, path: `/dashboard/clients/${c.id}` })),
-
     ...proposals.filter(p =>
       p.title.toLowerCase().includes(query.toLowerCase())
     ).map(p => ({ type: 'Proposal', icon: '📄', label: p.title, sub: p.status, path: '/dashboard/proposals' })),
-
     ...followups.filter(f =>
       (f.notes && f.notes.toLowerCase().includes(query.toLowerCase()))
     ).map(f => ({ type: 'Follow-up', icon: '🔔', label: f.notes || 'Follow-up', sub: f.date, path: '/dashboard/followups' })),
@@ -45,7 +50,15 @@ export default function GlobalSearch() {
   }, [])
 
   return (
-    <div style={{ position: 'fixed', top: '12px', left: '50%', transform: 'translateX(-50%)', zIndex: 980, width: '100%', maxWidth: '400px' }}>
+    <div style={{
+      position: 'fixed',
+      top: '12px',
+      left: isMobile ? '60px' : '50%',
+      transform: isMobile ? 'none' : 'translateX(-50%)',
+      zIndex: 980,
+      width: isMobile ? 'calc(100% - 110px)' : '100%',
+      maxWidth: isMobile ? 'none' : '400px'
+    }}>
       <div
         onClick={() => { setOpen(true); inputRef.current?.focus() }}
         style={{
@@ -63,7 +76,7 @@ export default function GlobalSearch() {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          placeholder="Search everything... (Ctrl+K)"
+          placeholder={isMobile ? 'Search...' : 'Search everything... (Ctrl+K)'}
           style={{
             border: 'none', outline: 'none', background: 'transparent',
             fontSize: '13px', color: titleColor, width: '100%',

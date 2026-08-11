@@ -14,6 +14,7 @@ import { useTheme } from './context/ThemeContext'
 import NotificationBell from './components/NotificationBell'
 import GlobalSearch from './components/GlobalSearch'
 import QuickAdd from './components/QuickAdd'
+import DailySummary from './components/DailySummary'
 
 function App() {
   const { isDark } = useTheme()
@@ -48,6 +49,7 @@ function App() {
             <NotificationBell />
             <GlobalSearch />
             <QuickAdd />
+            <DailySummary />
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />

@@ -236,9 +236,7 @@ export default function Landing() {
         .right-side { flex-shrink: 0; width: 100%; max-width: 380px; transform: translateY(60px); opacity: 0; transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s; }
         .right-side.visible { transform: translateY(0); opacity: 1; }
         .divider-vertical { width: 1px; align-self: stretch; background: linear-gradient(to bottom, transparent, #e2e8f0 30%, #e2e8f0 70%, transparent); flex-shrink: 0; }
-        .form-card { background: #FFFFFF; border-radius: 20px; padding: 32px 28px; border: 1px solid #f1f5f9; position: relative; }
-        .form-card::before { content: ''; position: absolute; inset: -2px; border-radius: 22px; background: linear-gradient(135deg, #7c3aed, #4F46E5, #f97316, #7c3aed); background-size: 300% 300%; animation: borderRotate 4s linear infinite; z-index: -1; }
-        @keyframes borderRotate { 0% { background-position: 0% 50% } 50% { background-position: 100% 50% } 100% { background-position: 0% 50% } }
+        .form-card { background: #FFFFFF; border-radius: 20px; padding: 32px 28px; box-shadow: 0 4px 40px rgba(124,58,237,0.08); border: 1px solid #f1f5f9; }
         .form-title { font-size: 22px; font-weight: 800; color: #1e1b4b; margin-bottom: 6px; text-align: center; }
         .form-sub { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 20px; line-height: 1.5; }
         .social-btn { width: 100%; padding: 11px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #FFFFFF; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: #374151; font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.2s; margin-bottom: 8px; }
@@ -346,10 +344,10 @@ export default function Landing() {
           backgroundColor: 'rgba(247, 246, 243, 0.9)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid #E9E9E7',
-          padding: '14px 40px',
+          padding: isMobile ? '12px 16px' : '14px 40px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <img src="/fpt-logo.png" alt="logo" style={{ height: '30px' }} />
+          <img src="/fpt-logo.png" alt="logo" style={{ height: isMobile ? '24px' : '30px' }} />
           <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
             {['Features', 'How It Works', 'Testimonials', 'Pricing', 'FAQ'].map((item) => (
               <a key={item} href={`#${item.toLowerCase().replace(/ /g, '-')}`}
@@ -359,9 +357,9 @@ export default function Landing() {
               >{item}</a>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => scrollToForm(true)} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', border: '1.5px solid #E9E9E7', backgroundColor: 'transparent', color: '#37352F', fontFamily: 'inherit' }}>Log in</button>
-            <button onClick={() => scrollToForm(false)} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)', color: 'white', fontFamily: 'inherit', boxShadow: '0 0 20px rgba(124,58,237,0.4)' }}>Get Started</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => scrollToForm(true)} style={{ padding: isMobile ? '6px 12px' : '8px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', border: '1.5px solid #E9E9E7', backgroundColor: 'transparent', color: '#37352F', fontFamily: 'inherit' }}>Log in</button>
+  <button onClick={() => scrollToForm(false)} style={{ padding: isMobile ? '6px 12px' : '8px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)', color: 'white', fontFamily: 'inherit', boxShadow: '0 0 20px rgba(124,58,237,0.4)' }}>Get Started</button>
           </div>
         </nav>
 

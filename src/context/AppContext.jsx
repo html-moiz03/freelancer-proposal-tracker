@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { logActivity } from '../utils/activityLog'
 
 const AppContext = createContext()
@@ -39,6 +39,28 @@ export function AppProvider({ children }) {
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
+
+  const autoExpiredRef = useRef(false)
+
+  useEffect(() => {
+    if (autoExpiredRef.current) return
+    autoExpiredRef.current = true
+    const today = new Date().toISOString().split('T')[0]
+    const updated = proposals.map((p) => {
+      if (
+        (p.status === 'Draft' || p.status === 'Sent' || p.status === 'In Review') &&
+        p.deadline && p.deadline < today
+      ) {
+        logActivity('PROPOSAL_AUTO_EXPIRED', `Auto-expired: ${p.title}`)
+        return { ...p, status: 'Lost' }
+      }
+      return p
+    })
+    const hasChanges = updated.some((p, i) => p.status !== proposals[i].status)
+    if (hasChanges) {
+      setTimeout(() => setProposals(updated), 0)
+    }
+  }, [proposals])
 
   // Client actions
   const addClient = (client) => {

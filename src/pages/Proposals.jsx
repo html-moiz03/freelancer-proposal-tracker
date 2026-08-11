@@ -3,10 +3,9 @@ import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
-import { exportProposalPDF } from '../utils/exportPDF'
-import { exportProposalsCSV } from '../utils/exportCSV'
 import EmptyState from '../components/EmptyState'
-import { formatDate } from '../utils/formatDate'
+import { exportProposalsCSV } from '../utils/exportCSV'
+import { exportProposalPDF } from '../utils/exportPDF'
 import confetti from 'canvas-confetti'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
@@ -29,6 +28,7 @@ export default function Proposals() {
   const [search, setSearch] = useState('')
   const [form, setForm] = useState({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '' })
   const [errors, setErrors] = useState({})
+  const [emailModal, setEmailModal] = useState(null)
 
   const card = { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
   const titleColor = isDark ? '#ffffff' : '#37352F'
@@ -52,12 +52,7 @@ export default function Proposals() {
       setEditId(null)
       showToast('Proposal updated successfully!', 'success')
       if (form.status === 'Won') {
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ['#4F46E5', '#7c3aed', '#10B981', '#F59E0B', '#EF4444'],
-        })
+        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#4F46E5', '#7c3aed', '#10B981', '#F59E0B', '#EF4444'] })
       }
     } else {
       addProposal(form)
@@ -84,6 +79,21 @@ export default function Proposals() {
   const getClientName = (id) => {
     const client = clients.find((c) => c.id === Number(id))
     return client ? client.name : 'Unknown Client'
+  }
+
+  const generateEmail = (proposal) => {
+    const client = clients.find((c) => c.id === Number(proposal.clientId))
+    const clientName = client ? client.name.split(' ')[0] : 'there'
+    const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+    const myName = session.name || 'Freelancer'
+    const curr = localStorage.getItem('fpt_currency') || 'PKR'
+
+    const templates = {
+      Draft: `Subject: Proposal for ${proposal.title}\n\nHi ${clientName},\n\nI hope you're doing well! I wanted to reach out regarding the proposal I've been preparing for ${proposal.title}.\n\nI've put together a comprehensive plan that I believe will perfectly meet your needs. The total investment for this project is ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nI'd love to schedule a quick call to walk you through the details and answer any questions you might have.\n\nLooking forward to hearing from you!\n\nBest regards,\n${myName}`,
+      Sent: `Subject: Following up on ${proposal.title} Proposal\n\nHi ${clientName},\n\nI hope this message finds you well! I wanted to follow up on the proposal I sent you for ${proposal.title}.\n\nI understand you're busy, and I want to make sure you had a chance to review it. The proposal outlines everything we discussed, with a total investment of ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nPlease let me know if you have any questions or would like to make any adjustments.\n\nLooking forward to your feedback!\n\nBest regards,\n${myName}`,
+      'In Review': `Subject: Quick Check-in on ${proposal.title}\n\nHi ${clientName},\n\nI hope you're having a great week! Just checking in to see how the review of my proposal for ${proposal.title} is going.\n\nI'm excited about the possibility of working together. If there's anything you'd like to discuss or clarify, I'm just a message away.\n\nBest regards,\n${myName}`,
+    }
+    return templates[proposal.status] || templates['Sent']
   }
 
   const isExpiringSoon = (deadline, status) => {
@@ -122,6 +132,7 @@ export default function Proposals() {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: titleColor }}>Proposals</h2>
         <div className="flex gap-2 items-center">
@@ -136,12 +147,14 @@ export default function Proposals() {
         </div>
       </div>
 
+      {/* Search */}
       <input type="text" placeholder="🔍 Search proposals..." value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none mb-4"
         style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
       />
 
+      {/* Filter Pills */}
       <div className="flex gap-2 mb-6 flex-wrap">
         {['All', ...STATUS_OPTIONS].map((s) => (
           <button key={s} onClick={() => setFilterStatus(s)}
@@ -155,10 +168,29 @@ export default function Proposals() {
         ))}
       </div>
 
+      {/* Templates */}
+      {templates && templates.length > 0 && (
+        <div className="rounded-xl p-5 border mb-6" style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
+          <h3 className="font-semibold mb-3" style={{ color: titleColor }}>📋 Saved Templates</h3>
+          <div className="flex flex-wrap gap-2">
+            {templates.map((template) => (
+              <div key={template.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
+                <span className="text-sm font-medium" style={{ color: titleColor }}>{template.title}</span>
+                <button onClick={() => { setForm({ title: template.title, clientId: '', amount: template.amount, deadline: '', status: 'Draft', notes: template.notes }); setShowForm(true); showToast('Template loaded!', 'success') }}
+                  className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: accent, color: '#FFFFFF' }}>Use</button>
+                <button onClick={() => { deleteTemplate(template.id); showToast('Template deleted!', 'error') }}
+                  className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Form */}
       {showForm && (
         <div className="rounded-xl p-6 mb-6 border" style={card}>
           <h3 className="text-lg font-semibold mb-4" style={{ color: titleColor }}>{editId ? 'Edit Proposal' : 'New Proposal'}</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <input type="text" placeholder="Proposal Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle} />
               {errors.title && <p className="text-xs mt-1" style={{ color: '#E03E3E' }}>{errors.title}</p>}
@@ -171,7 +203,7 @@ export default function Proposals() {
               {errors.clientId && <p className="text-xs mt-1" style={{ color: '#E03E3E' }}>{errors.clientId}</p>}
             </div>
             <div>
-              <input type="number" placeholder="Amount (PKR)" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle} />
+              <input type="number" placeholder={`Amount (${currency})`} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle} />
               {errors.amount && <p className="text-xs mt-1" style={{ color: '#E03E3E' }}>{errors.amount}</p>}
             </div>
             <div>
@@ -194,48 +226,11 @@ export default function Proposals() {
         </div>
       )}
 
-      {/* Templates Section */}
-      {templates.length > 0 && (
-        <div className="rounded-xl p-5 border mb-6" style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
-          <h3 className="font-semibold mb-3" style={{ color: titleColor }}>📋 Saved Templates</h3>
-          <div className="flex flex-wrap gap-2">
-            {templates.map((template) => (
-              <div key={template.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
-                <span className="text-sm font-medium" style={{ color: titleColor }}>{template.title}</span>
-                <button
-                  onClick={() => {
-                    setForm({ title: template.title, clientId: '', amount: template.amount, deadline: '', status: 'Draft', notes: template.notes })
-                    setShowForm(true)
-                    showToast('Template loaded!', 'success')
-                  }}
-                  className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: accent, color: '#FFFFFF' }}
-                >
-                  Use
-                </button>
-                <button
-                  onClick={() => { deleteTemplate(template.id); showToast('Template deleted!', 'error') }}
-                  className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Proposals List */}
       {filtered.length === 0 ? (
-        <EmptyState
-          icon="📄"
-          title={search ? 'No proposals found' : 'No proposals yet'}
-          description={search ? 'Try a different search term or clear the search.' : 'Create your first proposal to start tracking deals.'}
-          actionLabel={search ? null : '+ New Proposal'}
-          onAction={search ? null : () => setShowForm(true)}
-          isDark={isDark}
-        />
+        <EmptyState icon="📄" title={search ? 'No proposals found' : 'No proposals yet'}
+          description={search ? 'Try a different search term.' : 'Create your first proposal to start tracking deals.'}
+          actionLabel={search ? null : '+ New Proposal'} onAction={search ? null : () => setShowForm(true)} isDark={isDark} />
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {filtered.map((proposal) => (
@@ -253,40 +248,66 @@ export default function Proposals() {
                   {(() => {
                     const countdown = getCountdown(proposal.deadline, proposal.status)
                     return countdown ? (
-                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: countdown.bg, color: countdown.color }}>
-                        {countdown.label}
-                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: countdown.bg, color: countdown.color }}>{countdown.label}</span>
                     ) : null
                   })()}
                 </div>
                 <p className="text-sm" style={{ color: subColor }}>{getClientName(proposal.clientId)} • {currency} {Number(proposal.amount).toLocaleString()}</p>
-                <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {formatDate(proposal.deadline)}</p>
+                <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {proposal.deadline}</p>
                 {proposal.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{proposal.notes}</p>}
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported!', 'success') }}
-                  className="px-3 py-1 rounded-lg text-sm border"
-                  style={{ backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', color: '#065F46' }}
-                >
-                  📄 PDF
-                </button>
-                <button
-                  onClick={() => {
-                  addTemplate({ title: proposal.title, amount: proposal.amount, status: 'Draft', notes: proposal.notes || '' })
-                  showToast('Saved as template!', 'success')
-                }}
-                className="px-3 py-1 rounded-lg text-sm border"
-                style={{ backgroundColor: '#EDE9FE', borderColor: '#DDD6FE', color: '#6D28D9' }}
-              >
-                📋 Template
-              </button>
-              <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
-              <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="delete-btn px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
-            </div>
+              <div className="flex gap-2 flex-wrap justify-end">
+                <button onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported!', 'success') }}
+                  className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', color: '#065F46' }}>📄 PDF</button>
+                <button onClick={() => setEmailModal(proposal)}
+                  className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#DBEAFE', borderColor: '#93C5FD', color: '#1D4ED8' }}>✉️ Email</button>
+                <button onClick={() => { addTemplate({ title: proposal.title, amount: proposal.amount, status: 'Draft', notes: proposal.notes || '' }); showToast('Saved as template!', 'success') }}
+                  className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#EDE9FE', borderColor: '#DDD6FE', color: '#6D28D9' }}>📋 Template</button>
+                <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
+                <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="delete-btn px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Email Draft Modal */}
+      {emailModal && (
+        <>
+          <div onClick={() => setEmailModal(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1000 }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1001, width: '90%', maxWidth: '560px',
+            backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF',
+            borderRadius: '16px', padding: '24px',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.2)',
+            border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
+          }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: titleColor }}>✉️ Email Draft — {emailModal.title}</h3>
+              <button onClick={() => setEmailModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: subColor, fontSize: '20px' }}>×</button>
+            </div>
+            <textarea readOnly value={generateEmail(emailModal)}
+              style={{
+                width: '100%', height: '280px', padding: '12px',
+                borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
+                backgroundColor: isDark ? '#111111' : '#F7F6F3',
+                color: titleColor, fontSize: '13px', lineHeight: '1.6',
+                fontFamily: 'inherit', resize: 'none', outline: 'none'
+              }}
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => { navigator.clipboard.writeText(generateEmail(emailModal)); showToast('Email copied to clipboard!', 'success') }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: accent, color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}
+              >📋 Copy to Clipboard</button>
+              <button onClick={() => setEmailModal(null)}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, backgroundColor: 'transparent', color: subColor, fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}
+              >Close</button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
