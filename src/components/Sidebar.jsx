@@ -72,6 +72,7 @@ function Sidebar() {
           key={link.path}
           to={link.path}
           end
+          id={`nav-${link.path.split('/').pop()}`}
           onClick={() => isMobile && setMobileOpen(false)}
           className="px-3 py-2 rounded-md text-sm font-medium transition-colors"
           style={({ isActive }) => ({

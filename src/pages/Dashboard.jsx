@@ -66,6 +66,12 @@ export default function Dashboard() {
     .reduce((sum, p) => sum + Number(p.amount), 0)
   const overdueFollowups = followups.filter((f) => f.date < today).length
 
+  const inReviewRevenue = proposals
+    .filter(p => p.status === 'In Review')
+    .reduce((sum, p) => sum + Number(p.amount), 0)
+
+  const forecastRevenue = Math.round(inReviewRevenue * (winRate / 100))
+
   const stats = [
     { label: 'Total Clients', value: clients.length, color: '#2383E2' },
     { label: 'Total Proposals', value: totalProposals, color: '#9065B0' },
@@ -73,6 +79,8 @@ export default function Dashboard() {
     { label: 'Win Rate', value: `${winRate}%`, color: '#D9730D' },
     { label: `Revenue (${currency})`, value: totalRevenue.toLocaleString(), color: '#0F9B6E' },
     { label: 'Overdue Follow-ups', value: overdueFollowups, color: '#E03E3E' },
+    { label: `Forecast (${currency})`, value: forecastRevenue.toLocaleString(), color: '#7c3aed' },
+    { label: 'In Review Value', value: inReviewRevenue.toLocaleString(), color: '#D97706' },
   ]
 
   const barData = MONTHS.map((month, i) => ({
@@ -92,6 +100,14 @@ export default function Dashboard() {
       })
       .reduce((sum, p) => sum + Number(p.amount), 0)
   }))
+
+  const funnelData = [
+    { stage: 'Draft', count: proposals.filter(p => p.status === 'Draft').length, color: '#9B9A97' },
+    { stage: 'Sent', count: proposals.filter(p => p.status === 'Sent').length, color: '#3B82F6' },
+    { stage: 'In Review', count: proposals.filter(p => p.status === 'In Review').length, color: '#F59E0B' },
+    { stage: 'Won', count: proposals.filter(p => p.status === 'Won').length, color: '#10B981' },
+  ]
+  const maxCount = Math.max(...funnelData.map(f => f.count), 1)
 
   const statusCounts = ['Draft', 'Sent', 'In Review', 'Won', 'Lost'].map((status) => ({
     name: status,
@@ -186,7 +202,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl p-5 border" style={card}>
             <p className="text-sm font-medium mb-1" style={{ color: titleColor }}>{stat.label}</p>
@@ -242,30 +258,63 @@ export default function Dashboard() {
       <div className="rounded-xl p-5 border mt-6" style={card}>
         <h3 className="font-semibold mb-4" style={{ color: titleColor }}>📈 Revenue Trend ({currency})</h3>
         {proposals.filter(p => p.status === 'Won').length === 0 ? (
-        <div className="flex items-center justify-center h-40" style={{ color: subColor }}>
-          <p className="text-sm">No won proposals yet — close some deals!</p>
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={revenueData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={accent} stopOpacity={0.3}/>
-                <stop offset="95%" stopColor={accent} stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2a2a2a' : '#F1F0EE'} />
-            <XAxis dataKey="month" tick={{ fontSize: 11, fill: subColor }} />
-            <YAxis tick={{ fontSize: 11, fill: subColor }} allowDecimals={false} />
-            <Tooltip
-              contentStyle={{ borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, fontSize: '12px', backgroundColor: isDark ? '#1a1a1a' : '#fff', color: titleColor }}
-              formatter={(value) => [`${currency} ${value.toLocaleString()}`, 'Revenue']}
-            />
-            <Area type="monotone" dataKey="revenue" stroke={accent} strokeWidth={2} fill="url(#revenueGradient)" />
-          </AreaChart>
-        </ResponsiveContainer>
-      )}
-    </div>
+          <div className="flex items-center justify-center h-40" style={{ color: subColor }}>
+            <p className="text-sm">No won proposals yet — close some deals!</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={revenueData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={accent} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={accent} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2a2a2a' : '#F1F0EE'} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: subColor }} />
+              <YAxis tick={{ fontSize: 11, fill: subColor }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, fontSize: '12px', backgroundColor: isDark ? '#1a1a1a' : '#fff', color: titleColor }}
+                formatter={(value) => [`${currency} ${value.toLocaleString()}`, 'Revenue']}
+              />
+              <Area type="monotone" dataKey="revenue" stroke={accent} strokeWidth={2} fill="url(#revenueGradient)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+      
+      {/* Conversion Funnel */}
+      <div className="rounded-xl p-5 border mt-6" style={card}>
+        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>🔽 Conversion Funnel</h3>
+        {proposals.length === 0 ? (
+          <p className="text-sm" style={{ color: subColor }}>No proposal data yet</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {funnelData.map((item, i) => (
+              <div key={item.stage}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium" style={{ color: titleColor }}>{item.stage}</span>
+                  <span className="text-sm font-bold" style={{ color: item.color }}>{item.count} proposals</span>
+                </div>
+                <div style={{ backgroundColor: isDark ? '#2a2a2a' : '#F1F0EE', borderRadius: '99px', height: '10px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${(item.count / maxCount) * 100}%`,
+                    backgroundColor: item.color,
+                    borderRadius: '99px',
+                    transition: 'width 0.5s ease'
+                  }} />
+                </div>
+                {i < funnelData.length - 1 && item.count > 0 && funnelData[i + 1].count > 0 && (
+                  <p className="text-xs mt-1" style={{ color: subColor }}>
+                    {Math.round((funnelData[i + 1].count / item.count) * 100)}% conversion to {funnelData[i + 1].stage}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

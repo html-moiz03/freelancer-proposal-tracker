@@ -130,6 +130,7 @@ export default function QuickAdd() {
 
       {/* Floating Button */}
       <button
+        id="quick-add-btn"
         onClick={() => setOpen(!open)}
         style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 996,
