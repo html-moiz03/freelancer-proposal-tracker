@@ -1,5 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
@@ -16,16 +16,43 @@ import GlobalSearch from './components/GlobalSearch'
 import QuickAdd from './components/QuickAdd'
 import DailySummary from './components/DailySummary'
 import OnboardingTour from './components/OnboardingTour'
+import CommandPalette from './components/CommandPalette'
 
 function App() {
-  const { isDark } = useTheme()
+  const { isDark, accent } = useTheme()
+  const navigate = useNavigate()
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
+      // Don't trigger if Ctrl/Cmd is pressed (reserved for browser/search)
+      if (e.ctrlKey || e.metaKey) return
+
+      switch (e.key) {
+        case 'd': navigate('/dashboard'); break
+        case 'c': navigate('/dashboard/clients'); break
+        case 'p': navigate('/dashboard/proposals'); break
+        case 'f': navigate('/dashboard/followups'); break
+        case 'k': navigate('/dashboard/kanban'); break
+        case 's': navigate('/dashboard/settings'); break
+        case '?':
+          setShowShortcuts(prev => !prev)
+          break
+        default: break
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [navigate])
 
   return (
     <Routes>
@@ -52,6 +79,7 @@ function App() {
             <QuickAdd />
             <DailySummary />
             <OnboardingTour />
+            <CommandPalette />
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />
@@ -62,6 +90,53 @@ function App() {
               <Route path="/kanban" element={<Kanban />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
+
+            {/* Keyboard Shortcuts Modal */}
+            {showShortcuts && (
+              <>
+                <div onClick={() => setShowShortcuts(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1000 }} />
+                <div style={{
+                  position: 'fixed', top: '50%', left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 1001, width: '90%', maxWidth: '400px',
+                  backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF',
+                  borderRadius: '16px', padding: '24px',
+                  boxShadow: '0 24px 80px rgba(0,0,0,0.2)',
+                  border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
+                }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: isDark ? '#ffffff' : '#37352F', marginBottom: '16px' }}>⌨️ Keyboard Shortcuts</h3>
+                  {[
+                    { key: 'D', desc: 'Go to Dashboard' },
+                    { key: 'C', desc: 'Go to Clients' },
+                    { key: 'P', desc: 'Go to Proposals' },
+                    { key: 'F', desc: 'Go to Follow-ups' },
+                    { key: 'K', desc: 'Go to Kanban' },
+                    { key: 'S', desc: 'Go to Settings' },
+                    { key: 'Ctrl+K', desc: 'Global Search' },
+                    { key: '?', desc: 'Toggle this menu' },
+                  ].map((shortcut) => (
+                    <div key={shortcut.key} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 0', borderBottom: `1px solid ${isDark ? '#2a2a2a' : '#F1F0EE'}`
+                    }}>
+                      <span style={{ fontSize: '13px', color: isDark ? '#94a3b8' : '#6B6B6B' }}>{shortcut.desc}</span>
+                      <kbd style={{
+                        padding: '2px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: '700',
+                        backgroundColor: isDark ? '#2a2a2a' : '#F1F0EE',
+                        color: isDark ? '#ffffff' : '#37352F',
+                        border: `1px solid ${isDark ? '#3a3a3a' : '#E9E9E7'}`,
+                        fontFamily: 'monospace'
+                      }}>{shortcut.key}</kbd>
+                    </div>
+                  ))}
+                  <button onClick={() => setShowShortcuts(false)} style={{
+                    width: '100%', marginTop: '16px', padding: '10px', borderRadius: '8px',
+                    border: 'none', backgroundColor: accent, color: 'white',
+                    fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit'
+                  }}>Got it!</button>
+                </div>
+              </>
+            )}
           </main>
         </div>
       } />

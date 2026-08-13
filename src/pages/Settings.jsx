@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
 import { useApp } from '../context/AppContext'
+import { requestNotificationPermission, checkAndNotify } from '../utils/pushNotifications'
 
 const ACCENT_COLORS = [
   { name: 'Indigo', value: '#4F46E5' },
@@ -34,6 +35,7 @@ export default function Settings() {
   const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [notifEnabled, setNotifEnabled] = useState(Notification.permission === 'granted')
 
   const card = { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
   const titleColor = isDark ? '#ffffff' : '#37352F'
@@ -236,6 +238,47 @@ export default function Settings() {
             Change Password
           </button>
         </div>
+      </div>
+
+      {/* Notifications */}
+      <div className="rounded-xl p-6 border mb-4" style={card}>
+        <SectionTitle titleColor={titleColor}>🔔 Push Notifications</SectionTitle>
+        <div className="flex items-center justify-between p-3 rounded-lg mb-3" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3' }}>
+          <div>
+            <p className="text-sm font-medium" style={{ color: titleColor }}>Browser Notifications</p>
+            <p className="text-xs" style={{ color: subColor }}>Get alerts for overdue follow-ups and expiring proposals</p>
+          </div>
+          <div onClick={async () => {
+            const granted = await requestNotificationPermission()
+            setNotifEnabled(granted)
+            if (granted) {
+              checkAndNotify(followups, proposals)
+              showToast('Notifications enabled!', 'success')
+            } else {
+              showToast('Notifications blocked by browser!', 'error')
+            }
+          }}
+            style={{
+              width: '44px', height: '24px', borderRadius: '99px',
+              backgroundColor: notifEnabled ? '#4F46E5' : '#E9E9E7',
+              position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s'
+            }}>
+            <div style={{
+              width: '18px', height: '18px', borderRadius: '50%',
+              backgroundColor: 'white', position: 'absolute', top: '3px',
+              left: notifEnabled ? '23px' : '3px', transition: 'left 0.2s'
+            }} />
+          </div>
+        </div>
+        {notifEnabled && (
+          <button
+            onClick={() => checkAndNotify(followups, proposals)}
+            className="px-4 py-2 rounded-lg text-sm font-medium border w-fit"
+            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
+          >
+            🔔 Test Notification
+          </button>
+        )}
       </div>
 
       {/* Danger Zone */}
