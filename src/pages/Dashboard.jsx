@@ -7,6 +7,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts'
+import { generateMonthlyReport } from '../utils/generateMonthlyReport'
+import { useToast } from '../context/ToastContext'
 
 const STATUS_COLORS_PIE = {
   Draft: '#9B9A97',
@@ -52,6 +54,7 @@ function WelcomeText({ titleColor, accent }) {
 export default function Dashboard() {
   const { clients, proposals, followups, currency } = useApp()
   const { isDark, accent } = useTheme()
+  const { showToast } = useToast()
 
   const today = new Date().toISOString().split('T')[0]
   const [revenueGoal, setRevenueGoal] = useState(() => {
@@ -109,6 +112,27 @@ export default function Dashboard() {
   ]
   const maxCount = Math.max(...funnelData.map(f => f.count), 1)
 
+  const now = new Date()
+  const thisMonthNum = now.getMonth()
+  const thisYear = now.getFullYear()
+  const lastMonthNum = thisMonthNum === 0 ? 11 : thisMonthNum - 1
+  const lastMonthYear = thisMonthNum === 0 ? thisYear - 1 : thisYear
+
+  const thisMonthProposals = proposals.filter(p => {
+    const d = new Date(p.deadline)
+    return d.getMonth() === thisMonthNum && d.getFullYear() === thisYear
+  })
+
+  const lastMonthProposals = proposals.filter(p => {
+    const d = new Date(p.deadline)
+    return d.getMonth() === lastMonthNum && d.getFullYear() === lastMonthYear
+  })
+
+  const thisMonthRevenue = thisMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+  const lastMonthRevenue = lastMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+  const thisMonthWon = thisMonthProposals.filter(p => p.status === 'Won').length
+  const lastMonthWon = lastMonthProposals.filter(p => p.status === 'Won').length
+
   const statusCounts = ['Draft', 'Sent', 'In Review', 'Won', 'Lost'].map((status) => ({
     name: status,
     value: proposals.filter((p) => p.status === status).length
@@ -154,9 +178,18 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-6">
-        <WelcomeText titleColor={titleColor} accent={accent} />
-        <p className="text-sm mt-1" style={{ color: subColor }}>Here's what's happening with your business today.</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <WelcomeText titleColor={titleColor} accent={accent} />
+          <p className="text-sm mt-1" style={{ color: subColor }}>Here's what's happening with your business today.</p>
+        </div>
+        <button
+          onClick={() => { generateMonthlyReport(clients, proposals, followups); showToast('Monthly report downloaded!', 'success') }}
+          className="px-4 py-2 rounded-lg text-sm font-medium border flex items-center gap-2"
+          style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor, flexShrink: 0 }}
+        >
+          📊 Monthly Report
+        </button>
       </div>
 
       {/* Revenue Goal */}
@@ -407,6 +440,42 @@ export default function Dashboard() {
             })}
           </div>
         )}
+      </div>
+
+      {/* Monthly Comparison */}
+      <div className="rounded-xl p-5 border mt-6" style={card}>
+        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>📅 This Month vs Last Month</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { label: 'Proposals Sent', thisMonth: thisMonthProposals.length, lastMonth: lastMonthProposals.length, format: (v) => v },
+            { label: 'Won Deals', thisMonth: thisMonthWon, lastMonth: lastMonthWon, format: (v) => v },
+            { label: `Revenue (${currency})`, thisMonth: thisMonthRevenue, lastMonth: lastMonthRevenue, format: (v) => v.toLocaleString() },
+            { label: 'Win Rate', thisMonth: thisMonthProposals.length > 0 ? Math.round((thisMonthWon / thisMonthProposals.length) * 100) : 0, lastMonth: lastMonthProposals.length > 0 ? Math.round((lastMonthWon / lastMonthProposals.length) * 100) : 0, format: (v) => `${v}%` },
+          ].map((item) => {
+            const change = item.lastMonth > 0 ? Math.round(((item.thisMonth - item.lastMonth) / item.lastMonth) * 100) : 0
+            const isUp = item.thisMonth >= item.lastMonth
+            return (
+              <div key={item.label} className="rounded-xl p-4 border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
+                <p className="text-xs mb-2" style={{ color: subColor }}>{item.label}</p>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-xl font-bold" style={{ color: titleColor }}>{item.format(item.thisMonth)}</p>
+                    <p className="text-xs" style={{ color: subColor }}>vs {item.format(item.lastMonth)} last month</p>
+                  </div>
+                  {item.lastMonth > 0 && (
+                    <span style={{
+                      fontSize: '12px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px',
+                      backgroundColor: isUp ? '#D1FAE5' : '#FEE2E2',
+                      color: isUp ? '#065F46' : '#991B1B'
+                    }}>
+                      {isUp ? '↑' : '↓'} {Math.abs(change)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Top Clients Leaderboard */}

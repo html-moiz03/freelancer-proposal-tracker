@@ -6,6 +6,7 @@ import FancyButton from '../components/FancyButton'
 import EmptyState from '../components/EmptyState'
 import { exportProposalsCSV } from '../utils/exportCSV'
 import { exportProposalPDF } from '../utils/exportPDF'
+import { generateInvoice } from '../utils/generateInvoice'
 import confetti from 'canvas-confetti'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
@@ -26,7 +27,8 @@ export default function Proposals() {
   const [editId, setEditId] = useState(null)
   const [filterStatus, setFilterStatus] = useState('All')
   const [search, setSearch] = useState('')
-  const [form, setForm] = useState({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '' })
+  const [tagInput, setTagInput] = useState('')
+  const [form, setForm] = useState({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '', priority: 'Medium', tags: [] })
   const [errors, setErrors] = useState({})
   const [emailModal, setEmailModal] = useState(null)
 
@@ -58,19 +60,25 @@ export default function Proposals() {
       addProposal(form)
       showToast('Proposal added successfully!', 'success')
     }
-    setForm({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '' })
+    setForm({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '', priority: 'Medium', tags: [] })
+    setTagInput('')
     setErrors({})
     setShowForm(false)
   }
 
   const handleEdit = (proposal) => {
-    setForm({ title: proposal.title, clientId: proposal.clientId, amount: proposal.amount, deadline: proposal.deadline, status: proposal.status, notes: proposal.notes || '' })
+    setForm({
+      title: proposal.title, clientId: proposal.clientId, amount: proposal.amount,
+      deadline: proposal.deadline, status: proposal.status, notes: proposal.notes || '',
+      priority: proposal.priority || 'Medium', tags: proposal.tags || []
+    })
     setEditId(proposal.id)
     setShowForm(true)
   }
 
   const handleCancel = () => {
-    setForm({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '' })
+    setForm({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '', priority: 'Medium', tags: [] })
+    setTagInput('')
     setErrors({})
     setEditId(null)
     setShowForm(false)
@@ -87,20 +95,17 @@ export default function Proposals() {
     const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
     const myName = session.name || 'Freelancer'
     const curr = localStorage.getItem('fpt_currency') || 'PKR'
-
     const templates = {
-      Draft: `Subject: Proposal for ${proposal.title}\n\nHi ${clientName},\n\nI hope you're doing well! I wanted to reach out regarding the proposal I've been preparing for ${proposal.title}.\n\nI've put together a comprehensive plan that I believe will perfectly meet your needs. The total investment for this project is ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nI'd love to schedule a quick call to walk you through the details and answer any questions you might have.\n\nLooking forward to hearing from you!\n\nBest regards,\n${myName}`,
-      Sent: `Subject: Following up on ${proposal.title} Proposal\n\nHi ${clientName},\n\nI hope this message finds you well! I wanted to follow up on the proposal I sent you for ${proposal.title}.\n\nI understand you're busy, and I want to make sure you had a chance to review it. The proposal outlines everything we discussed, with a total investment of ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nPlease let me know if you have any questions or would like to make any adjustments.\n\nLooking forward to your feedback!\n\nBest regards,\n${myName}`,
-      'In Review': `Subject: Quick Check-in on ${proposal.title}\n\nHi ${clientName},\n\nI hope you're having a great week! Just checking in to see how the review of my proposal for ${proposal.title} is going.\n\nI'm excited about the possibility of working together. If there's anything you'd like to discuss or clarify, I'm just a message away.\n\nBest regards,\n${myName}`,
+      Draft: `Subject: Proposal for ${proposal.title}\n\nHi ${clientName},\n\nI hope you're doing well! I wanted to reach out regarding the proposal I've been preparing for ${proposal.title}.\n\nI've put together a comprehensive plan that I believe will perfectly meet your needs. The total investment for this project is ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nI'd love to schedule a quick call to walk you through the details.\n\nLooking forward to hearing from you!\n\nBest regards,\n${myName}`,
+      Sent: `Subject: Following up on ${proposal.title} Proposal\n\nHi ${clientName},\n\nI hope this message finds you well! I wanted to follow up on the proposal I sent you for ${proposal.title}.\n\nThe proposal outlines everything we discussed, with a total investment of ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nPlease let me know if you have any questions.\n\nLooking forward to your feedback!\n\nBest regards,\n${myName}`,
+      'In Review': `Subject: Quick Check-in on ${proposal.title}\n\nHi ${clientName},\n\nJust checking in to see how the review of my proposal for ${proposal.title} is going.\n\nI'm excited about the possibility of working together. If there's anything you'd like to discuss, I'm just a message away.\n\nBest regards,\n${myName}`,
     }
     return templates[proposal.status] || templates['Sent']
   }
 
   const isExpiringSoon = (deadline, status) => {
     if (status === 'Won' || status === 'Lost') return false
-    const today = new Date()
-    const deadlineDate = new Date(deadline)
-    const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24))
+    const diffDays = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
     return diffDays <= 3 && diffDays >= 0
   }
 
@@ -111,9 +116,7 @@ export default function Proposals() {
 
   const getCountdown = (deadline, status) => {
     if (status === 'Won' || status === 'Lost') return null
-    const today = new Date()
-    const deadlineDate = new Date(deadline)
-    const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24))
+    const diffDays = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
     if (diffDays < 0) return null
     if (diffDays === 0) return { label: '⚡ Due Today', bg: '#FEF3C7', color: '#D97706' }
     if (diffDays === 1) return { label: '⏰ Due Tomorrow', bg: '#FEF3C7', color: '#D97706' }
@@ -136,11 +139,9 @@ export default function Proposals() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: titleColor }}>Proposals</h2>
         <div className="flex gap-2 items-center">
-          <button
-            onClick={() => { exportProposalsCSV(proposals, clients); showToast('Proposals exported!', 'success') }}
+          <button onClick={() => { exportProposalsCSV(proposals, clients); showToast('Proposals exported!', 'success') }}
             className="px-3 py-2 rounded-lg text-sm font-medium border"
-            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
-          >
+            style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>
             📥 Export CSV
           </button>
           <FancyButton onClick={() => setShowForm(true)}>+ New Proposal</FancyButton>
@@ -151,8 +152,7 @@ export default function Proposals() {
       <input type="text" placeholder="🔍 Search proposals..." value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none mb-4"
-        style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}
-      />
+        style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }} />
 
       {/* Filter Pills */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -161,8 +161,7 @@ export default function Proposals() {
             className="px-3 py-1 rounded-full text-sm font-medium border transition-colors"
             style={filterStatus === s
               ? { backgroundColor: '#37352F', color: '#FFFFFF', borderColor: '#37352F' }
-              : { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', color: subColor, borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
-            }>
+              : { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', color: subColor, borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
             {s}
           </button>
         ))}
@@ -176,7 +175,7 @@ export default function Proposals() {
             {templates.map((template) => (
               <div key={template.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
                 <span className="text-sm font-medium" style={{ color: titleColor }}>{template.title}</span>
-                <button onClick={() => { setForm({ title: template.title, clientId: '', amount: template.amount, deadline: '', status: 'Draft', notes: template.notes }); setShowForm(true); showToast('Template loaded!', 'success') }}
+                <button onClick={() => { setForm({ title: template.title, clientId: '', amount: template.amount, deadline: '', status: 'Draft', notes: template.notes, priority: 'Medium', tags: [] }); setShowForm(true); showToast('Template loaded!', 'success') }}
                   className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: accent, color: '#FFFFFF' }}>Use</button>
                 <button onClick={() => { deleteTemplate(template.id); showToast('Template deleted!', 'error') }}
                   className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>✕</button>
@@ -216,7 +215,35 @@ export default function Proposals() {
               </select>
             </div>
             <div>
+              <select value={form.priority || 'Medium'} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle}>
+                <option value="Low">🟢 Low Priority</option>
+                <option value="Medium">🟡 Medium Priority</option>
+                <option value="High">🔴 High Priority</option>
+              </select>
+            </div>
+            <div className="md:col-span-2">
               <input type="text" placeholder="Notes (optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle} />
+            </div>
+            <div className="md:col-span-2">
+              <div className="flex gap-2 flex-wrap mb-2">
+                {(form.tags || []).map((tag, i) => (
+                  <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', backgroundColor: accent + '20', color: accent }}>
+                    {tag}
+                    <span onClick={() => setForm({ ...form, tags: form.tags.filter((_, j) => j !== i) })} style={{ cursor: 'pointer', fontSize: '14px', lineHeight: 1 }}>×</span>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input type="text" placeholder="Add tag (e.g. Urgent, High Value)..." value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && tagInput.trim()) { setForm({ ...form, tags: [...(form.tags || []), tagInput.trim()] }); setTagInput('') } }}
+                  className="flex-1 px-4 py-2 rounded-lg border text-sm focus:outline-none" style={inputStyle} />
+                <button onClick={() => { if (tagInput.trim()) { setForm({ ...form, tags: [...(form.tags || []), tagInput.trim()] }); setTagInput('') } }}
+                  className="px-3 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: accent, color: 'white' }}>
+                  Add
+                </button>
+              </div>
+              <p className="text-xs mt-1" style={{ color: subColor }}>Press Enter or click Add to add a tag</p>
             </div>
           </div>
           <div className="flex gap-3 mt-4">
@@ -234,37 +261,58 @@ export default function Proposals() {
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {filtered.map((proposal) => (
-            <div key={proposal.id} className="rounded-xl p-5 border flex items-center justify-between" style={card}>
-              <div>
-                <div className="flex items-center gap-3 mb-1 flex-wrap">
-                  <h4 className="font-semibold" style={{ color: accent }}>{proposal.title}</h4>
-                  <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[proposal.status].bg, color: STATUS_COLORS[proposal.status].color }}>{proposal.status}</span>
-                  {isExpiringSoon(proposal.deadline, proposal.status) && (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>⚠ Expiring Soon</span>
+            <div key={proposal.id} className="rounded-xl p-5 border" style={card}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h4 className="font-semibold" style={{ color: accent }}>{proposal.title}</h4>
+                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[proposal.status].bg, color: STATUS_COLORS[proposal.status].color }}>{proposal.status}</span>
+                    {proposal.priority && (
+                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{
+                        backgroundColor: proposal.priority === 'High' ? '#FEE2E2' : proposal.priority === 'Medium' ? '#FEF3C7' : '#F1F0EE',
+                        color: proposal.priority === 'High' ? '#991B1B' : proposal.priority === 'Medium' ? '#D97706' : '#6B6B6B'
+                      }}>
+                        {proposal.priority === 'High' ? '🔴' : proposal.priority === 'Medium' ? '🟡' : '🟢'} {proposal.priority}
+                      </span>
+                    )}
+                    {isExpiringSoon(proposal.deadline, proposal.status) && (
+                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>⚠ Expiring Soon</span>
+                    )}
+                    {isExpired(proposal.deadline, proposal.status) && (
+                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>⚠ Deadline Passed</span>
+                    )}
+                    {(() => {
+                      const countdown = getCountdown(proposal.deadline, proposal.status)
+                      return countdown ? (
+                        <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: countdown.bg, color: countdown.color }}>{countdown.label}</span>
+                      ) : null
+                    })()}
+                  </div>
+                  <p className="text-sm" style={{ color: subColor }}>{getClientName(proposal.clientId)} • {currency} {Number(proposal.amount).toLocaleString()}</p>
+                  <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {proposal.deadline}</p>
+                  {proposal.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{proposal.notes}</p>}
+                  {proposal.tags && proposal.tags.length > 0 && (
+                    <div className="flex gap-1 flex-wrap mt-2">
+                      {proposal.tags.map((tag, i) => (
+                        <span key={i} style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', backgroundColor: accent + '20', color: accent }}>{tag}</span>
+                      ))}
+                    </div>
                   )}
-                  {isExpired(proposal.deadline, proposal.status) && (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>⚠ Deadline Passed</span>
-                  )}
-                  {(() => {
-                    const countdown = getCountdown(proposal.deadline, proposal.status)
-                    return countdown ? (
-                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: countdown.bg, color: countdown.color }}>{countdown.label}</span>
-                    ) : null
-                  })()}
                 </div>
-                <p className="text-sm" style={{ color: subColor }}>{getClientName(proposal.clientId)} • {currency} {Number(proposal.amount).toLocaleString()}</p>
-                <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {proposal.deadline}</p>
-                {proposal.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{proposal.notes}</p>}
-              </div>
-              <div className="flex gap-2 flex-wrap justify-end">
-                <button onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported!', 'success') }}
-                  className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', color: '#065F46' }}>📄 PDF</button>
-                <button onClick={() => setEmailModal(proposal)}
-                  className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#DBEAFE', borderColor: '#93C5FD', color: '#1D4ED8' }}>✉️ Email</button>
-                <button onClick={() => { addTemplate({ title: proposal.title, amount: proposal.amount, status: 'Draft', notes: proposal.notes || '' }); showToast('Saved as template!', 'success') }}
-                  className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#EDE9FE', borderColor: '#DDD6FE', color: '#6D28D9' }}>📋 Template</button>
-                <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
-                <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="delete-btn px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
+                <div className="flex gap-2 flex-wrap justify-end flex-shrink-0">
+                  <button onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported!', 'success') }}
+                    className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', color: '#065F46' }}>📄 PDF</button>
+                  {proposal.status === 'Won' && (
+                    <button onClick={() => { const client = clients.find(c => c.id === Number(proposal.clientId)); generateInvoice(proposal, client); showToast('Invoice downloaded!', 'success') }}
+                      className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#FEF3C7', borderColor: '#FDE68A', color: '#D97706' }}>🧾 Invoice</button>
+                  )}
+                  <button onClick={() => setEmailModal(proposal)}
+                    className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#DBEAFE', borderColor: '#93C5FD', color: '#1D4ED8' }}>✉️ Email</button>
+                  <button onClick={() => { addTemplate({ title: proposal.title, amount: proposal.amount, status: 'Draft', notes: proposal.notes || '' }); showToast('Saved as template!', 'success') }}
+                    className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#EDE9FE', borderColor: '#DDD6FE', color: '#6D28D9' }}>📋 Template</button>
+                  <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
+                  <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
+                </div>
               </div>
             </div>
           ))}
@@ -276,35 +324,26 @@ export default function Proposals() {
         <>
           <div onClick={() => setEmailModal(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1000 }} />
           <div style={{
-            position: 'fixed', top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
             zIndex: 1001, width: '90%', maxWidth: '560px',
-            backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF',
-            borderRadius: '16px', padding: '24px',
-            boxShadow: '0 24px 80px rgba(0,0,0,0.2)',
-            border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
+            backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderRadius: '16px', padding: '24px',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.2)', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
           }}>
             <div className="flex items-center justify-between mb-4">
               <h3 style={{ fontSize: '16px', fontWeight: '700', color: titleColor }}>✉️ Email Draft — {emailModal.title}</h3>
               <button onClick={() => setEmailModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: subColor, fontSize: '20px' }}>×</button>
             </div>
             <textarea readOnly value={generateEmail(emailModal)}
-              style={{
-                width: '100%', height: '280px', padding: '12px',
-                borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
-                backgroundColor: isDark ? '#111111' : '#F7F6F3',
-                color: titleColor, fontSize: '13px', lineHeight: '1.6',
-                fontFamily: 'inherit', resize: 'none', outline: 'none'
-              }}
-            />
+              style={{ width: '100%', height: '280px', padding: '12px', borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, backgroundColor: isDark ? '#111111' : '#F7F6F3', color: titleColor, fontSize: '13px', lineHeight: '1.6', fontFamily: 'inherit', resize: 'none', outline: 'none' }} />
             <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => { navigator.clipboard.writeText(generateEmail(emailModal)); showToast('Email copied to clipboard!', 'success') }}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: accent, color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}
-              >📋 Copy to Clipboard</button>
+              <button onClick={() => { navigator.clipboard.writeText(generateEmail(emailModal)); showToast('Email copied to clipboard!', 'success') }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: accent, color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+                📋 Copy to Clipboard
+              </button>
               <button onClick={() => setEmailModal(null)}
-                style={{ padding: '10px 20px', borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, backgroundColor: 'transparent', color: subColor, fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}
-              >Close</button>
+                style={{ padding: '10px 20px', borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, backgroundColor: 'transparent', color: subColor, fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Close
+              </button>
             </div>
           </div>
         </>

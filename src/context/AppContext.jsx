@@ -132,12 +132,29 @@ export function AppProvider({ children }) {
     setTemplates(templates.filter((t) => t.id !== id))
   }
 
+  const [communications, setCommunications] = useState(() => {
+    return JSON.parse(localStorage.getItem('fpt_communications')) || []
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fpt_communications', JSON.stringify(communications))
+  }, [communications])
+
+  const addCommunication = (comm) => {
+    setCommunications([...communications, { ...comm, id: Date.now() }])
+    logActivity('COMMUNICATION_LOGGED', `${comm.type} with client logged`)
+  }
+
+  const deleteCommunication = (id) => {
+    setCommunications(communications.filter((c) => c.id !== id))
+  }
   return (
     <AppContext.Provider value={{
       clients, addClient, deleteClient, updateClient,
       proposals, addProposal, deleteProposal, updateProposal,
       followups, addFollowup, deleteFollowup, updateFollowup,
       templates, addTemplate, deleteTemplate,
+      communications, addCommunication, deleteCommunication,
       currency, setCurrency,
     }}>
       {children}
