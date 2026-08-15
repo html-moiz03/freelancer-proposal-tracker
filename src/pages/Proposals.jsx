@@ -31,7 +31,7 @@ export default function Proposals() {
   const [form, setForm] = useState({ title: '', clientId: '', amount: '', deadline: '', status: 'Draft', notes: '', priority: 'Medium', tags: [] })
   const [errors, setErrors] = useState({})
   const [emailModal, setEmailModal] = useState(null)
-
+  const [openMenu, setOpenMenu] = useState(null)
   const card = { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }
   const titleColor = isDark ? '#ffffff' : '#37352F'
   const subColor = isDark ? '#94a3b8' : '#9B9A97'
@@ -299,19 +299,56 @@ export default function Proposals() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 flex-wrap justify-end flex-shrink-0">
-                  <button onClick={() => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported!', 'success') }}
-                    className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', color: '#065F46' }}>📄 PDF</button>
-                  {proposal.status === 'Won' && (
-                    <button onClick={() => { const client = clients.find(c => c.id === Number(proposal.clientId)); generateInvoice(proposal, client); showToast('Invoice downloaded!', 'success') }}
-                      className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#FEF3C7', borderColor: '#FDE68A', color: '#D97706' }}>🧾 Invoice</button>
+                <div className="flex-shrink-0 relative">
+                  <button
+                    onClick={() => setOpenMenu(openMenu === proposal.id ? null : proposal.id)}
+                    style={{
+                      padding: '6px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
+                      backgroundColor: isDark ? '#111111' : '#F7F6F3', color: titleColor,
+                      cursor: 'pointer', fontSize: '16px', fontWeight: '700'
+                    }}
+                  >
+                    ⋮
+                  </button>
+
+                  {openMenu === proposal.id && (
+                    <>
+                      <div onClick={() => setOpenMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+                      <div style={{
+                        position: 'absolute', right: 0, top: '36px', zIndex: 51,
+                        backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF',
+                        border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`,
+                        borderRadius: '12px', padding: '6px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                        minWidth: '180px'
+                      }}>
+                        {[
+                          { label: '📄 Export PDF', onClick: () => { exportProposalPDF(proposal, getClientName(proposal.clientId)); showToast('PDF exported!', 'success') }, color: '#065F46', bg: '#D1FAE5' },
+                          ...(proposal.status === 'Won' ? [{ label: '🧾 Generate Invoice', onClick: () => { const client = clients.find(c => c.id === Number(proposal.clientId)); generateInvoice(proposal, client); showToast('Invoice downloaded!', 'success') }, color: '#D97706', bg: '#FEF3C7' }] : []),
+                          { label: '✉️ Email Draft', onClick: () => setEmailModal(proposal), color: '#1D4ED8', bg: '#DBEAFE' },
+                          { label: '📋 Save Template', onClick: () => { addTemplate({ title: proposal.title, amount: proposal.amount, status: 'Draft', notes: proposal.notes || '' }); showToast('Saved as template!', 'success') }, color: '#6D28D9', bg: '#EDE9FE' },
+                          { label: '✏️ Edit', onClick: () => handleEdit(proposal), color: titleColor, bg: isDark ? '#111111' : '#F7F6F3' },
+                          { label: '🗑️ Delete', onClick: () => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }, color: '#991B1B', bg: '#FEE2E2' },
+                        ].map((action) => (
+                          <button key={action.label}
+                            onClick={() => { action.onClick(); setOpenMenu(null) }}
+                            style={{
+                              width: '100%', padding: '8px 12px', borderRadius: '8px',
+                              border: 'none', cursor: 'pointer', textAlign: 'left',
+                              fontSize: '13px', fontWeight: '500',
+                              backgroundColor: 'transparent', color: titleColor,
+                              display: 'flex', alignItems: 'center', gap: '8px',
+                              transition: 'background 0.15s'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = action.bg; e.currentTarget.style.color = action.color }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = titleColor }}
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
                   )}
-                  <button onClick={() => setEmailModal(proposal)}
-                    className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#DBEAFE', borderColor: '#93C5FD', color: '#1D4ED8' }}>✉️ Email</button>
-                  <button onClick={() => { addTemplate({ title: proposal.title, amount: proposal.amount, status: 'Draft', notes: proposal.notes || '' }); showToast('Saved as template!', 'success') }}
-                    className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: '#EDE9FE', borderColor: '#DDD6FE', color: '#6D28D9' }}>📋 Template</button>
-                  <button onClick={() => handleEdit(proposal)} className="px-3 py-1 rounded-lg text-sm border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>Edit</button>
-                  <button onClick={() => { deleteProposal(proposal.id); showToast('Proposal deleted!', 'error') }} className="px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Delete</button>
                 </div>
               </div>
             </div>

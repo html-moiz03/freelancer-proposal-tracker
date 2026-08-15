@@ -17,6 +17,7 @@ import QuickAdd from './components/QuickAdd'
 import DailySummary from './components/DailySummary'
 import OnboardingTour from './components/OnboardingTour'
 import CommandPalette from './components/CommandPalette'
+import CalendarPage from './pages/Calendar'
 
 function StarsBackground() {
   const canvasRef = useRef(null)
@@ -161,6 +162,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/clients/:id" element={<ClientDetail />} />
               <Route path="/kanban" element={<Kanban />} />
+              <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
 

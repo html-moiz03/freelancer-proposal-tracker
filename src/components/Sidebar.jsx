@@ -9,6 +9,7 @@ const links = [
   { path: '/dashboard/followups', label: '🔔 Follow-ups' },
   { path: '/dashboard/kanban', label: '🗂️ Kanban' },
   { path: '/dashboard/settings', label: '⚙️ Settings' },
+  { path: '/dashboard/calendar', label: '📅 Calendar' },
 ]
 
 function Sidebar() {
