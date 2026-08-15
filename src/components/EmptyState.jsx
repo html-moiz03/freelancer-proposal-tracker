@@ -1,4 +1,4 @@
-export default function EmptyState({ icon, title, description, actionLabel, onAction, isDark }) {
+export default function EmptyState({ icon, title, description, actionLabel, onAction, isDark, accent }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       
@@ -40,7 +40,7 @@ export default function EmptyState({ icon, title, description, actionLabel, onAc
         <button
           onClick={onAction}
           className="px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ backgroundColor: '#4F46E5', color: '#FFFFFF' }}
+          style={{ backgroundColor: accent || '#4F46E5', color: '#FFFFFF' }}
         >
           {actionLabel}
         </button>

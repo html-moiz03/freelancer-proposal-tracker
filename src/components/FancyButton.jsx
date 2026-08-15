@@ -11,7 +11,7 @@ export default function FancyButton({ onClick, children }) {
           font-weight: 700;
           font-size: 14px;
           color: white;
-          background-color: #37352F;
+          background-color: ${accent};
           padding: 0.6em 1.4em;
           border: none;
           border-radius: 8px;
@@ -26,7 +26,7 @@ export default function FancyButton({ onClick, children }) {
           transform: translate(-50%, -50%);
           height: 20px;
           width: 20px;
-          background-color: ${accent};
+          background-color: rgba(255, 255, 255, 0.28);
           border-radius: 50%;
           transition: 0.6s ease;
         }

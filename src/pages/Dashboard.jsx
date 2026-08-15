@@ -1,511 +1,586 @@
-import { useState, useEffect } from 'react'
-import { getLogs, clearLogs } from '../utils/activityLog'
+import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
-import { formatDate } from '../utils/formatDate'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area
-} from 'recharts'
-import { generateMonthlyReport } from '../utils/generateMonthlyReport'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../context/ToastContext'
-
-const STATUS_COLORS_PIE = {
-  Draft: '#9B9A97',
-  Sent: '#3B82F6',
-  'In Review': '#F59E0B',
-  Won: '#10B981',
-  Lost: '#EF4444',
-}
+import { getLogs, clearLogs } from '../utils/activityLog'
+import { generateMonthlyReport } from '../utils/generateMonthlyReport'
+import {
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Legend, AreaChart, Area, LineChart, Line
+} from 'recharts'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-function WelcomeText({ titleColor, accent }) {
+const RANGES = ['7D', '30D', '3M', '12M']
+
+function fmtShort(d) { return `${MONTHS[d.getMonth()]} ${d.getDate()}` }
+
+// Builds bucketed Sent / Won / Lost series for the Proposal Activity chart
+function buildActivityData(range, proposals) {
+  const now = new Date()
+  const buckets = []
+
+  if (range === '7D') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i)
+      buckets.push({ label: fmtShort(d), start: new Date(d.setHours(0, 0, 0, 0)), days: 1 })
+    }
+  } else if (range === '30D') {
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i * 6)
+      buckets.push({ label: fmtShort(d), start: d, days: 6 })
+    }
+  } else if (range === '3M') {
+    for (let i = 12; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i * 7)
+      buckets.push({ label: fmtShort(d), start: d, days: 7 })
+    }
+  } else {
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      buckets.push({ label: MONTHS[d.getMonth()], start: d, days: 30 })
+    }
+  }
+
+  return buckets.map((b, i) => {
+    const bucketStart = b.start.getTime()
+    const bucketEnd = i < buckets.length - 1 ? buckets[i + 1].start.getTime() : now.getTime() + 86400000
+    const inBucket = proposals.filter(p => {
+      const t = new Date(p.deadline).getTime()
+      return t >= bucketStart && t < bucketEnd
+    })
+    return {
+      label: b.label,
+      Sent: inBucket.filter(p => p.status === 'Sent').length,
+      Won: inBucket.filter(p => p.status === 'Won').length,
+      Lost: inBucket.filter(p => p.status === 'Lost').length,
+    }
+  })
+}
+
+function StatCard({ label, value, color, change, changeLabel, isDark }) {
+  const bg = isDark ? '#111118' : '#ffffff'
+  const border = isDark ? '#1e1e2e' : '#f0f0f0'
+  const titleColor = isDark ? '#94a3b8' : '#6b7280'
+  const valueColor = isDark ? '#ffffff' : '#111827'
+  const isUp = change >= 0
+  return (
+    <div style={{ backgroundColor: bg, border: `1px solid ${border}`, borderRadius: '12px', padding: '20px', transition: 'box-shadow 0.2s' }}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
+      <p style={{ fontSize: '11px', fontWeight: '600', color: titleColor, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
+      <p style={{ fontSize: '26px', fontWeight: '800', color: color || valueColor, marginBottom: '6px', letterSpacing: '-0.5px' }}>{value}</p>
+      {changeLabel && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {change !== undefined && (
+            <span style={{ fontSize: '11px', fontWeight: '600', color: isUp ? '#10B981' : '#EF4444' }}>
+              {isUp ? '↑' : '↓'} {Math.abs(change)}%
+            </span>
+          )}
+          <span style={{ fontSize: '11px', color: titleColor }}>{changeLabel}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function WelcomeText({ isDark }) {
   const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
   const name = session.name ? session.name.split(' ')[0] : 'there'
-  const fullText = `Welcome, ${name}! 👋`
-  const [displayed, setDisplayed] = useState('')
-
-  useEffect(() => {
-    let i = 0
-    const interval = setInterval(() => {
-      i++
-      setDisplayed(fullText.slice(0, i))
-      if (i >= fullText.length) clearInterval(interval)
-    }, 60)
-    return () => clearInterval(interval)
-  }, [fullText])
-
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   return (
-    <h2 className="text-2xl font-bold" style={{ color: titleColor }}>
-      {displayed}
-      <span style={{
-        display: 'inline-block',
-        width: '2px', height: '24px',
-        backgroundColor: accent,
-        marginLeft: '2px',
-        verticalAlign: 'middle',
-        animation: 'blink 1s step-end infinite'
-      }} />
-      <style>{`@keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }`}</style>
-    </h2>
+    <div>
+      <h2 style={{ fontSize: '22px', fontWeight: '800', color: isDark ? '#ffffff' : '#111827', margin: 0 }}>
+        {greeting}, {name}! 👋
+      </h2>
+      <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#6b7280', marginTop: '4px' }}>
+        Here's what's happening with your business today.
+      </p>
+    </div>
   )
 }
 
 export default function Dashboard() {
   const { clients, proposals, followups, currency } = useApp()
   const { isDark, accent } = useTheme()
+  const navigate = useNavigate()
   const { showToast } = useToast()
+  const [revenueGoal, setRevenueGoal] = useState(() => Number(localStorage.getItem('fpt_revenue_goal')) || 100000)
+  const [activityRange, setActivityRange] = useState('30D')
+  const [periodFilter, setPeriodFilter] = useState('This Month')
 
   const today = new Date().toISOString().split('T')[0]
-  const [revenueGoal, setRevenueGoal] = useState(() => {
-    return Number(localStorage.getItem('fpt_revenue_goal')) || 100000
-  })
-  const logs = getLogs()
+  const now = new Date()
+
+  const handleExportReport = () => {
+    generateMonthlyReport(clients, proposals, followups)
+    showToast('Report exported!', 'success')
+  }
+
+  const cardBg = isDark ? '#111118' : '#ffffff'
+  const border = isDark ? '#1e1e2e' : '#f0f0f0'
+  const titleColor = isDark ? '#ffffff' : '#111827'
+  const subColor = isDark ? '#64748b' : '#6b7280'
+  const card = { backgroundColor: cardBg, border: `1px solid ${border}`, borderRadius: '12px' }
+
   const totalProposals = proposals.length
-  const wonProposals = proposals.filter((p) => p.status === 'Won').length
+  const wonProposals = proposals.filter(p => p.status === 'Won').length
   const winRate = totalProposals > 0 ? Math.round((wonProposals / totalProposals) * 100) : 0
-  const totalRevenue = proposals
-    .filter((p) => p.status === 'Won')
-    .reduce((sum, p) => sum + Number(p.amount), 0)
-  const overdueFollowups = followups.filter((f) => f.date < today).length
-
-  const inReviewRevenue = proposals
-    .filter(p => p.status === 'In Review')
-    .reduce((sum, p) => sum + Number(p.amount), 0)
-
+  const totalRevenue = proposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+  const overdueFollowups = followups.filter(f => f.date < today).length
+  const inReviewRevenue = proposals.filter(p => p.status === 'In Review').reduce((sum, p) => sum + Number(p.amount), 0)
   const forecastRevenue = Math.round(inReviewRevenue * (winRate / 100))
+  const activeProposals = proposals.filter(p => p.status === 'In Review' || p.status === 'Sent' || p.status === 'Negotiation').length
 
-  const stats = [
-    { label: 'Total Clients', value: clients.length, color: '#2383E2' },
-    { label: 'Total Proposals', value: totalProposals, color: '#9065B0' },
-    { label: 'Won Proposals', value: wonProposals, color: '#0F9B6E' },
-    { label: 'Win Rate', value: `${winRate}%`, color: '#D9730D' },
-    { label: `Revenue (${currency})`, value: totalRevenue.toLocaleString(), color: '#0F9B6E' },
-    { label: 'Overdue Follow-ups', value: overdueFollowups, color: '#E03E3E' },
-    { label: `Forecast (${currency})`, value: forecastRevenue.toLocaleString(), color: '#7c3aed' },
-    { label: 'In Review Value', value: inReviewRevenue.toLocaleString(), color: '#D97706' },
+  const thisMonthNum = now.getMonth()
+  const thisYear = now.getFullYear()
+  const lastMonthNum = thisMonthNum === 0 ? 11 : thisMonthNum - 1
+  const lastMonthYear = thisMonthNum === 0 ? thisYear - 1 : thisYear
+  const thisMonthProposals = proposals.filter(p => { const d = new Date(p.deadline); return d.getMonth() === thisMonthNum && d.getFullYear() === thisYear })
+  const lastMonthProposals = proposals.filter(p => { const d = new Date(p.deadline); return d.getMonth() === lastMonthNum && d.getFullYear() === lastMonthYear })
+  const thisMonthRevenue = thisMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+  const lastMonthRevenue = lastMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+  const thisMonthWon = thisMonthProposals.filter(p => p.status === 'Won').length
+  const lastMonthWon = lastMonthProposals.filter(p => p.status === 'Won').length
+  const revenueChange = lastMonthRevenue > 0 ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0
+  const wonChange = lastMonthWon > 0 ? Math.round(((thisMonthWon - lastMonthWon) / lastMonthWon) * 100) : 0
+
+  const activityData = buildActivityData(activityRange, proposals)
+
+  // Proposal Pipeline funnel
+  const sentCount = proposals.filter(p => p.status !== 'Draft').length
+  const responseCount = proposals.filter(p => ['In Review', 'Negotiation', 'Won', 'Lost'].includes(p.status)).length
+  const negotiationCount = proposals.filter(p => p.status === 'Negotiation' || p.status === 'Won' || p.status === 'Lost').length
+  const pipelineWonCount = proposals.filter(p => p.status === 'Won').length
+  const responseRate = sentCount > 0 ? Math.round((responseCount / sentCount) * 100) : 0
+  const negotiationRate = responseCount > 0 ? Math.round((negotiationCount / responseCount) * 100) : 0
+  const pipelineWinRate = negotiationCount > 0 ? Math.round((pipelineWonCount / negotiationCount) * 100) : (responseCount > 0 ? Math.round((pipelineWonCount / responseCount) * 100) : 0)
+  const pipelineStages = [
+    { label: 'Proposals Sent', count: sentCount, sub: null, color: '#7C5CFC' },
+    { label: 'Responses', count: responseCount, sub: `${responseRate}% response rate`, color: '#6D8CFF' },
+    { label: 'In Negotiation', count: negotiationCount, sub: `${negotiationRate}% of responses`, color: '#F59E0B' },
+    { label: 'Won', count: pipelineWonCount, sub: `${pipelineWinRate}% win rate`, color: '#10B981' },
   ]
-
-  const barData = MONTHS.map((month, i) => ({
-    month,
-    proposals: proposals.filter((p) => {
-      const d = new Date(p.deadline)
-      return d.getMonth() === i
-    }).length
-  }))
-
-  const revenueData = MONTHS.map((month, i) => ({
-    month,
-    revenue: proposals
-      .filter((p) => {
-        const d = new Date(p.deadline)
-        return d.getMonth() === i && p.status === 'Won'
-      })
-      .reduce((sum, p) => sum + Number(p.amount), 0)
-  }))
-
+  const pipelineMax = Math.max(sentCount, 1)
+  const revenueData = MONTHS.map((month, i) => ({ month, revenue: proposals.filter(p => { const d = new Date(p.deadline); return d.getMonth() === i && p.status === 'Won' }).reduce((sum, p) => sum + Number(p.amount), 0) }))
   const funnelData = [
-    { stage: 'Draft', count: proposals.filter(p => p.status === 'Draft').length, color: '#9B9A97' },
+    { stage: 'Draft', count: proposals.filter(p => p.status === 'Draft').length, color: '#94a3b8' },
     { stage: 'Sent', count: proposals.filter(p => p.status === 'Sent').length, color: '#3B82F6' },
     { stage: 'In Review', count: proposals.filter(p => p.status === 'In Review').length, color: '#F59E0B' },
     { stage: 'Won', count: proposals.filter(p => p.status === 'Won').length, color: '#10B981' },
   ]
   const maxCount = Math.max(...funnelData.map(f => f.count), 1)
 
-  const now = new Date()
-  const thisMonthNum = now.getMonth()
-  const thisYear = now.getFullYear()
-  const lastMonthNum = thisMonthNum === 0 ? 11 : thisMonthNum - 1
-  const lastMonthYear = thisMonthNum === 0 ? thisYear - 1 : thisYear
-
-  const thisMonthProposals = proposals.filter(p => {
-    const d = new Date(p.deadline)
-    return d.getMonth() === thisMonthNum && d.getFullYear() === thisYear
-  })
-
-  const lastMonthProposals = proposals.filter(p => {
-    const d = new Date(p.deadline)
-    return d.getMonth() === lastMonthNum && d.getFullYear() === lastMonthYear
-  })
-
-  const thisMonthRevenue = thisMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
-  const lastMonthRevenue = lastMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
-  const thisMonthWon = thisMonthProposals.filter(p => p.status === 'Won').length
-  const lastMonthWon = lastMonthProposals.filter(p => p.status === 'Won').length
-
-  const statusCounts = ['Draft', 'Sent', 'In Review', 'Won', 'Lost'].map((status) => ({
-    name: status,
-    value: proposals.filter((p) => p.status === status).length
-  })).filter((d) => d.value > 0)
-
   const recentProposals = [...proposals].reverse().slice(0, 5)
-  const upcomingFollowups = followups
-    .filter((f) => f.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 5)
+  const upcomingFollowups = followups.filter(f => f.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5)
 
   const STATUS_COLORS = {
-    Draft: { bg: '#F1F0EE', color: '#6B6B6B' },
+    Draft: { bg: '#F1F5F9', color: '#64748B' },
     Sent: { bg: '#DBEAFE', color: '#1D4ED8' },
     'In Review': { bg: '#FEF3C7', color: '#D97706' },
+    Negotiation: { bg: '#EDE9FE', color: '#6D28D9' },
     Won: { bg: '#D1FAE5', color: '#065F46' },
     Lost: { bg: '#FEE2E2', color: '#991B1B' },
   }
 
-  const getProposalTitle = (id) => {
-    const proposal = proposals.find((p) => p.id === Number(id))
-    return proposal ? proposal.title : 'Unknown'
-  }
+  const getProposalTitle = (id) => proposals.find(p => p.id === Number(id))?.title || 'Unknown'
 
-  const topClients = clients
-    .map((client) => {
-      const clientProposals = proposals.filter((p) => Number(p.clientId) === client.id)
-      const revenue = clientProposals.filter((p) => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
-      const won = clientProposals.filter((p) => p.status === 'Won').length
-      return { ...client, revenue, won, total: clientProposals.length }
-    })
-    .filter((c) => c.total > 0)
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5)
+  const topClients = clients.map(client => {
+    const cp = proposals.filter(p => Number(p.clientId) === client.id)
+    const revenue = cp.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+    return { ...client, revenue, won: cp.filter(p => p.status === 'Won').length, total: cp.length }
+  }).filter(c => c.total > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
 
-  const card = {
-    backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF',
-    borderColor: isDark ? '#2a2a2a' : '#E9E9E7'
-  }
+  const getClientName = (clientId) => clients.find(c => c.id === Number(clientId))?.name
 
-  const titleColor = isDark ? '#ffffff' : '#37352F'
-  const subColor = isDark ? '#94a3b8' : '#9B9A97'
+  // Most overdue follow-up -> its client name + days overdue
+  const overdueSorted = followups.filter(f => f.date < today).sort((a, b) => a.date.localeCompare(b.date))
+  const mostOverdueFollowup = overdueSorted[0]
+  const mostOverdueProposal = mostOverdueFollowup ? proposals.find(p => p.id === Number(mostOverdueFollowup.proposalId)) : null
+  const mostOverdueClient = mostOverdueProposal ? getClientName(mostOverdueProposal.clientId) : null
+  const daysOverdue = mostOverdueFollowup ? Math.max(1, Math.floor((now - new Date(mostOverdueFollowup.date)) / 86400000)) : 0
+
+  // Proposals sitting in "Sent" the longest (id is a Date.now() timestamp -> creation time)
+  const waitingProposals = proposals.filter(p => p.status === 'Sent').sort((a, b) => a.id - b.id)
+  const oldestWaiting = waitingProposals[0]
+  const daysWaiting = oldestWaiting ? Math.max(1, Math.floor((now - oldestWaiting.id) / 86400000)) : 0
+
+  // Clients with no proposal activity in the last 12 days
+  const inactiveClients = clients.filter(c => {
+    const clientProposals = proposals.filter(p => Number(p.clientId) === c.id)
+    if (clientProposals.length === 0) return true
+    const mostRecent = Math.max(...clientProposals.map(p => p.id))
+    return Math.floor((now - mostRecent) / 86400000) >= 12
+  })
+  const daysInactive = (() => {
+    if (inactiveClients.length === 0) return 0
+    const clientProposals = proposals.filter(p => Number(p.clientId) === inactiveClients[0].id)
+    if (clientProposals.length === 0) return null
+    const mostRecent = Math.max(...clientProposals.map(p => p.id))
+    return Math.floor((now - mostRecent) / 86400000)
+  })()
+
+  const attentionItems = [
+    ...overdueFollowups > 0 ? [{
+      icon: '⏰', iconBg: '#FEE2E2', iconColor: '#EF4444',
+      label: `${overdueFollowups} overdue follow-up${overdueFollowups > 1 ? 's' : ''}`,
+      name: mostOverdueClient || 'Client',
+      sub: `Overdue by ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}`,
+      action: () => navigate('/dashboard/followups'), actionLabel: 'Follow up',
+    }] : [],
+    ...waitingProposals.length > 0 ? [{
+      icon: '📄', iconBg: '#FEF3C7', iconColor: '#F59E0B',
+      label: `${waitingProposals.length} proposal${waitingProposals.length > 1 ? 's' : ''} waiting`,
+      name: oldestWaiting.title,
+      sub: `Sent ${daysWaiting} day${daysWaiting !== 1 ? 's' : ''} ago`,
+      action: () => navigate('/dashboard/proposals'), actionLabel: 'View',
+    }] : [],
+    ...inactiveClients.length > 0 ? [{
+      icon: '👤', iconBg: '#DBEAFE', iconColor: '#3B82F6',
+      label: `${inactiveClients.length} client${inactiveClients.length > 1 ? 's' : ''} no activity`,
+      name: inactiveClients[0].name,
+      sub: daysInactive === null ? 'No proposals yet' : `No activity for ${daysInactive} days`,
+      action: () => navigate('/dashboard/clients'), actionLabel: 'View all',
+    }] : [],
+  ].slice(0, 4)
+
+  const logs = getLogs()
+  const tooltipStyle = { borderRadius: '8px', border: `1px solid ${border}`, fontSize: '12px', backgroundColor: cardBg, color: titleColor }
 
   return (
-    <div>
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <WelcomeText titleColor={titleColor} accent={accent} />
-          <p className="text-sm mt-1" style={{ color: subColor }}>Here's what's happening with your business today.</p>
+    <div style={{ maxWidth: '1400px' }}>
+
+      {/* Welcome */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
+        <WelcomeText isDark={isDark} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <select value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value)} style={{
+            padding: '9px 14px', borderRadius: '8px', border: `1px solid ${border}`,
+            backgroundColor: cardBg, color: titleColor, fontSize: '13px', fontWeight: '600',
+            outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
+          }}>
+            <option>This Month</option>
+            <option>Last Month</option>
+            <option>This Quarter</option>
+            <option>This Year</option>
+          </select>
+          <button onClick={handleExportReport} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '9px 16px', borderRadius: '8px', border: `1px solid ${border}`,
+            backgroundColor: cardBg, color: titleColor, fontSize: '13px', fontWeight: '600',
+            cursor: 'pointer', fontFamily: 'inherit'
+          }}>
+            <span>⬇</span> Export Report
+          </button>
         </div>
-        <button
-          onClick={() => { generateMonthlyReport(clients, proposals, followups); showToast('Monthly report downloaded!', 'success') }}
-          className="px-4 py-2 rounded-lg text-sm font-medium border flex items-center gap-2"
-          style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor, flexShrink: 0 }}
-        >
-          📊 Monthly Report
-        </button>
       </div>
 
-      {/* Revenue Goal */}
-      <div className="rounded-xl p-5 border mb-6" style={card}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-2">
-          <div>
-            <h3 className="font-semibold" style={{ color: titleColor }}>Monthly Revenue Goal</h3>
-            <p className="text-xs mt-0.5" style={{ color: subColor }}>Track your earnings progress</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium" style={{ color: subColor }}>Goal ({currency})</span>
-            <input
-              type="number"
-              value={revenueGoal}
-              onChange={(e) => {
-                setRevenueGoal(Number(e.target.value))
-                localStorage.setItem('fpt_revenue_goal', e.target.value)
-              }}
-              className="text-sm font-semibold px-3 py-1 rounded-lg border focus:outline-none w-32"
-              style={{ borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor, backgroundColor: isDark ? '#111111' : '#F7F6F3' }}
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <div style={{ backgroundColor: isDark ? '#2a2a2a' : '#F1F0EE', borderRadius: '99px', height: '10px', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', borderRadius: '99px',
-                width: `${Math.min(revenueGoal > 0 ? (totalRevenue / revenueGoal) * 100 : 0, 100)}%`,
-                background: `linear-gradient(135deg, ${accent}, #7c3aed)`,
-                transition: 'width 0.5s ease'
-              }} />
+      {/* Main Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: attentionItems.length > 0 ? '1fr 280px' : '1fr', gap: '20px', marginBottom: '20px' }}>
+        <div>
+          {/* Revenue Goal */}
+          <div style={{ ...card, padding: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: '600', color: titleColor }}>Monthly Revenue Goal</p>
+                <p style={{ fontSize: '20px', fontWeight: '800', color: titleColor, marginTop: '2px' }}>
+                  {currency} {totalRevenue.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '400', color: subColor }}>/ {currency} {revenueGoal.toLocaleString()}</span>
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {revenueChange !== 0 && (
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: revenueChange > 0 ? '#10B981' : '#EF4444' }}>
+                    {revenueChange > 0 ? '↑' : '↓'} {Math.abs(revenueChange)}% vs last month
+                  </span>
+                )}
+                <input type="number" value={revenueGoal}
+                  onChange={(e) => { setRevenueGoal(Number(e.target.value)); localStorage.setItem('fpt_revenue_goal', e.target.value) }}
+                  style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: isDark ? '#1e1e2e' : '#f9fafb', color: titleColor, fontSize: '13px', outline: 'none', width: '120px' }} />
+              </div>
+            </div>
+            <div style={{ backgroundColor: isDark ? '#1e1e2e' : '#f1f5f9', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: '99px', width: `${Math.min(revenueGoal > 0 ? (totalRevenue / revenueGoal) * 100 : 0, 100)}%`, background: `linear-gradient(135deg, ${accent}, #7c3aed)`, transition: 'width 0.5s ease' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+              <span style={{ fontSize: '11px', color: subColor }}>{currency} {totalRevenue.toLocaleString()} earned</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: accent }}>{revenueGoal > 0 ? Math.min(Math.round((totalRevenue / revenueGoal) * 100), 100) : 0}%</span>
             </div>
           </div>
-          <span className="text-sm font-bold" style={{ color: '#4F46E5', minWidth: '40px', textAlign: 'right' }}>
-            {revenueGoal > 0 ? Math.min(Math.round((totalRevenue / revenueGoal) * 100), 100) : 0}%
-          </span>
-        </div>
-        <div className="flex justify-between mt-2">
-          <span className="text-xs" style={{ color: subColor }}>{currency} {totalRevenue.toLocaleString()} earned</span>
-          <span className="text-xs" style={{ color: subColor }}>Goal: {currency} {revenueGoal.toLocaleString()}</span>
-        </div>
-      </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl p-5 border" style={card}>
-            <p className="text-sm font-medium mb-1" style={{ color: titleColor }}>{stat.label}</p>
-            <p className="text-3xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
+          {/* Stats Row 1 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '12px' }}>
+            <StatCard label="Revenue" value={`${currency} ${totalRevenue.toLocaleString()}`} color={accent} change={revenueChange} changeLabel="vs last month" isDark={isDark} />
+            <StatCard label="Win Rate" value={`${winRate}%`} color="#10B981" change={wonChange} changeLabel="vs last month" isDark={isDark} />
+            <StatCard label="Active Proposals" value={activeProposals} color="#F59E0B" changeLabel="in pipeline" isDark={isDark} />
+            <StatCard label="Overdue Follow-ups" value={overdueFollowups} color={overdueFollowups > 0 ? '#EF4444' : '#10B981'} changeLabel={overdueFollowups > 0 ? 'Needs attention' : 'All good!'} isDark={isDark} />
           </div>
-        ))}
+
+          {/* Stats Row 2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            <StatCard label="Total Clients" value={clients.length} isDark={isDark} />
+            <StatCard label="Won Proposals" value={wonProposals} change={wonChange} changeLabel="vs last month" isDark={isDark} />
+            <StatCard label={`Forecast`} value={`${currency} ${forecastRevenue.toLocaleString()}`} color="#7c3aed" changeLabel="based on win rate" isDark={isDark} />
+            <StatCard label="In Review Value" value={`${currency} ${inReviewRevenue.toLocaleString()}`} color="#F59E0B" isDark={isDark} />
+          </div>
+        </div>
+
+        {/* Needs Attention */}
+        {attentionItems.length > 0 && (
+          <div style={{ ...card, padding: '20px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>Needs your attention</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {attentionItems.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <div style={{
+                    width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0,
+                    backgroundColor: item.iconBg, color: item.iconColor,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', marginTop: '1px'
+                  }}>{item.icon}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '12px', fontWeight: '700', color: item.iconColor, margin: 0 }}>{item.label}</p>
+                    <p style={{ fontSize: '12px', fontWeight: '600', color: titleColor, margin: '3px 0 0' }}>{item.name}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', color: subColor }}>{item.sub}</span>
+                      <button onClick={item.action} style={{ padding: '4px 12px', borderRadius: '6px', border: `1px solid ${border}`, backgroundColor: isDark ? '#0f0f13' : '#ffffff', color: accent, fontSize: '11px', fontWeight: '600', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>{item.actionLabel}</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="rounded-xl p-5 border" style={card}>
-          <h3 className="font-semibold mb-4" style={{ color: titleColor }}>Proposals by Month</h3>
-          {proposals.length === 0 ? (
-            <div className="flex items-center justify-center h-40" style={{ color: subColor }}>
-              <p className="text-sm">No proposal data yet</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+        <div style={{ ...card, padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, margin: 0 }}>Proposal Activity</h3>
+            <div style={{ display: 'flex', gap: '4px', backgroundColor: isDark ? '#1e1e2e' : '#f1f5f9', borderRadius: '8px', padding: '3px' }}>
+              {RANGES.map(r => (
+                <button key={r} onClick={() => setActivityRange(r)} style={{
+                  padding: '4px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                  fontSize: '11px', fontWeight: '700', fontFamily: 'inherit',
+                  backgroundColor: activityRange === r ? (isDark ? '#111118' : '#ffffff') : 'transparent',
+                  color: activityRange === r ? accent : subColor,
+                  boxShadow: activityRange === r ? '0 1px 4px rgba(0,0,0,0.1)' : 'none'
+                }}>{r}</button>
+              ))}
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2a2a2a' : '#F1F0EE'} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: subColor }} />
-                <YAxis tick={{ fontSize: 11, fill: subColor }} allowDecimals={false} />
-                <Tooltip contentStyle={{ borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, fontSize: '12px', backgroundColor: isDark ? '#1a1a1a' : '#fff', color: titleColor }} />
-                <Bar dataKey="proposals" fill={accent} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="rounded-xl p-5 border" style={card}>
-          <h3 className="font-semibold mb-4" style={{ color: titleColor }}>Proposal Status Breakdown</h3>
-          {statusCounts.length === 0 ? (
-            <div className="flex items-center justify-center h-40" style={{ color: subColor }}>
-              <p className="text-sm">No proposal data yet</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={statusCounts} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                  {statusCounts.map((entry) => (
-                    <Cell key={entry.name} fill={STATUS_COLORS_PIE[entry.name]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, fontSize: '12px', backgroundColor: isDark ? '#1a1a1a' : '#fff', color: titleColor }} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', color: titleColor }} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      {/* Revenue Line Chart */}
-      <div className="rounded-xl p-5 border mt-6" style={card}>
-        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>📈 Revenue Trend ({currency})</h3>
-        {proposals.filter(p => p.status === 'Won').length === 0 ? (
-          <div className="flex items-center justify-center h-40" style={{ color: subColor }}>
-            <p className="text-sm">No won proposals yet — close some deals!</p>
           </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={revenueData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={accent} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={accent} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2a2a2a' : '#F1F0EE'} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: subColor }} />
-              <YAxis tick={{ fontSize: 11, fill: subColor }} allowDecimals={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: '8px', border: `1px solid ${isDark ? '#2a2a2a' : '#E9E9E7'}`, fontSize: '12px', backgroundColor: isDark ? '#1a1a1a' : '#fff', color: titleColor }}
-                formatter={(value) => [`${currency} ${value.toLocaleString()}`, 'Revenue']}
-              />
-              <Area type="monotone" dataKey="revenue" stroke={accent} strokeWidth={2} fill="url(#revenueGradient)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-      
-      {/* Conversion Funnel */}
-      <div className="rounded-xl p-5 border mt-6" style={card}>
-        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>🔽 Conversion Funnel</h3>
-        {proposals.length === 0 ? (
-          <p className="text-sm" style={{ color: subColor }}>No proposal data yet</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {funnelData.map((item, i) => (
-              <div key={item.stage}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium" style={{ color: titleColor }}>{item.stage}</span>
-                  <span className="text-sm font-bold" style={{ color: item.color }}>{item.count} proposals</span>
-                </div>
-                <div style={{ backgroundColor: isDark ? '#2a2a2a' : '#F1F0EE', borderRadius: '99px', height: '10px', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${(item.count / maxCount) * 100}%`,
-                    backgroundColor: item.color,
-                    borderRadius: '99px',
-                    transition: 'width 0.5s ease'
-                  }} />
-                </div>
-                {i < funnelData.length - 1 && item.count > 0 && funnelData[i + 1].count > 0 && (
-                  <p className="text-xs mt-1" style={{ color: subColor }}>
-                    {Math.round((funnelData[i + 1].count / item.count) * 100)}% conversion to {funnelData[i + 1].stage}
-                  </p>
-                )}
+          {proposals.length === 0 ? <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: subColor, fontSize: '13px' }}>No data yet</div> : (
+            <ResponsiveContainer width="100%" height={190}>
+              <LineChart data={activityData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e1e2e' : '#f0f0f0'} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: subColor }} />
+                <YAxis tick={{ fontSize: 10, fill: subColor }} allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: titleColor }} />
+                <Line type="monotone" dataKey="Sent" stroke="#7C5CFC" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="Won" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="Lost" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        <div style={{ ...card, padding: '20px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>Proposal Pipeline</h3>
+          {proposals.length === 0 ? <div style={{ height: '190px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: subColor, fontSize: '13px' }}>No data yet</div> : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              {/* Funnel */}
+              <div style={{ flex: '0 0 130px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                {pipelineStages.map((s) => {
+                  const widthPct = Math.max((s.count / pipelineMax) * 100, s.count > 0 ? 22 : 8)
+                  const inset = (100 - widthPct) / 2
+                  return (
+                    <div key={s.label} style={{
+                      width: '100%', height: '38px',
+                      clipPath: `polygon(${inset}% 0%, ${100 - inset}% 0%, ${100 - inset - 6}% 100%, ${inset + 6}% 100%)`,
+                      backgroundColor: s.color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <span style={{ color: 'white', fontSize: '12px', fontWeight: '800' }}>{s.count}</span>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
+              {/* Legend / stats */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {pipelineStages.map(s => (
+                  <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: s.color, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '13px', fontWeight: '800', color: titleColor, margin: 0 }}>{s.count} <span style={{ fontWeight: '600' }}>{s.label}</span></p>
+                      {s.sub && <p style={{ fontSize: '11px', color: subColor, margin: '1px 0 0' }}>{s.sub}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Revenue Trend */}
+      <div style={{ ...card, padding: '20px', marginBottom: '20px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>Revenue Trend ({currency})</h3>
+        <ResponsiveContainer width="100%" height={160}>
+          <AreaChart data={revenueData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={accent} stopOpacity={0.2} />
+                <stop offset="95%" stopColor={accent} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e1e2e' : '#f0f0f0'} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fill: subColor }} />
+            <YAxis tick={{ fontSize: 10, fill: subColor }} allowDecimals={false} />
+            <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${currency} ${v.toLocaleString()}`, 'Revenue']} />
+            <Area type="monotone" dataKey="revenue" stroke={accent} strokeWidth={2} fill="url(#revenueGradient)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Bottom Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+        {/* Recent Proposals */}
+        <div style={{ ...card, padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor }}>Recent Proposals</h3>
+            <button onClick={() => navigate('/dashboard/proposals')} style={{ fontSize: '11px', color: accent, background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}>View all →</button>
           </div>
-        )}
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-xl p-5 border" style={card}>
-          <h3 className="font-semibold mb-4" style={{ color: titleColor }}>Recent Proposals</h3>
-          {recentProposals.length === 0 ? (
-            <p className="text-sm" style={{ color: subColor }}>No proposals yet</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {recentProposals.map((p) => (
-                <div key={p.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: titleColor }}>{p.title}</p>
-                    <p className="text-xs" style={{ color: subColor }}>{currency} {Number(p.amount).toLocaleString()}</p>
+          {recentProposals.length === 0 ? <p style={{ fontSize: '13px', color: subColor }}>No proposals yet</p> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {recentProposals.map(p => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '12px', fontWeight: '600', color: titleColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</p>
+                    <p style={{ fontSize: '11px', color: subColor }}>{currency} {Number(p.amount).toLocaleString()}</p>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[p.status].bg, color: STATUS_COLORS[p.status].color }}>
-                    {p.status}
-                  </span>
+                  <span style={{ fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', marginLeft: '8px', backgroundColor: STATUS_COLORS[p.status]?.bg, color: STATUS_COLORS[p.status]?.color, flexShrink: 0 }}>{p.status}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="rounded-xl p-5 border" style={card}>
-          <h3 className="font-semibold mb-4" style={{ color: titleColor }}>Upcoming Follow-ups</h3>
-          {upcomingFollowups.length === 0 ? (
-            <p className="text-sm" style={{ color: subColor }}>No upcoming follow-ups</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {upcomingFollowups.map((f) => (
-                <div key={f.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: titleColor }}>{getProposalTitle(f.proposalId)}</p>
-                    <p className="text-xs" style={{ color: subColor }}>{f.notes || 'No notes'}</p>
+        {/* Upcoming Follow-ups */}
+        <div style={{ ...card, padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor }}>Upcoming Follow-ups</h3>
+            <button onClick={() => navigate('/dashboard/followups')} style={{ fontSize: '11px', color: accent, background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}>View all →</button>
+          </div>
+          {upcomingFollowups.length === 0 ? <p style={{ fontSize: '13px', color: subColor }}>No upcoming follow-ups</p> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {upcomingFollowups.map(f => (
+                <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '12px', fontWeight: '600', color: titleColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getProposalTitle(f.proposalId)}</p>
+                    <p style={{ fontSize: '11px', color: subColor }}>{f.notes || 'No notes'}</p>
                   </div>
-                  <p className="text-xs font-medium" style={{ color: '#2383E2' }}>{formatDate(f.date)}</p>
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: accent, flexShrink: 0, marginLeft: '8px' }}>{f.date}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
-      {/* Activity Log */}
-      <div className="rounded-xl p-5 border mt-6" style={card}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold" style={{ color: titleColor }}>📋 Activity Log</h3>
-          <button
-            onClick={() => { clearLogs(); window.location.reload() }}
-            className="text-xs px-3 py-1 rounded-lg border"
-            style={{ color: subColor, borderColor: isDark ? '#2a2a2a' : '#E9E9E7', backgroundColor: 'transparent' }}
-          >
-            Clear All
-          </button>
+
+        {/* Top Clients */}
+        <div style={{ ...card, padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor }}>Top Clients</h3>
+            <button onClick={() => navigate('/dashboard/clients')} style={{ fontSize: '11px', color: accent, background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}>View all →</button>
+          </div>
+          {topClients.length === 0 ? <p style={{ fontSize: '13px', color: subColor }}>No client data yet</p> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {topClients.map((client, i) => {
+                const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
+                return (
+                  <div key={client.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>{medals[i]}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '12px', fontWeight: '600', color: titleColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{client.name}</p>
+                      <div style={{ backgroundColor: isDark ? '#1e1e2e' : '#f1f5f9', borderRadius: '99px', height: '4px', marginTop: '4px' }}>
+                        <div style={{ height: '100%', borderRadius: '99px', width: `${topClients[0].revenue > 0 ? (client.revenue / topClients[0].revenue) * 100 : 0}%`, background: `linear-gradient(135deg, ${accent}, #7c3aed)` }} />
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: accent, flexShrink: 0 }}>{currency} {client.revenue.toLocaleString()}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
-        {logs.length === 0 ? (
-          <p className="text-sm" style={{ color: subColor }}>No activity yet — start adding clients and proposals!</p>
-        ) : (
-          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-            {logs.map((log) => {
-              const icons = {
-                CLIENT_ADDED: '👤',
-                CLIENT_DELETED: '🗑️',
-                CLIENT_UPDATED: '✏️',
-                PROPOSAL_ADDED: '📄',
-                PROPOSAL_DELETED: '🗑️',
-                PROPOSAL_UPDATED: '✏️',
-                PROPOSAL_STATUS: '🔄',
-                FOLLOWUP_ADDED: '🔔',
-                FOLLOWUP_DELETED: '🗑️',
-                FOLLOWUP_UPDATED: '✏️',
-              }
-              const timeAgo = (timestamp) => {
-                const diff = Date.now() - new Date(timestamp).getTime()
-                const mins = Math.floor(diff / 60000)
-                const hours = Math.floor(diff / 3600000)
-                const days = Math.floor(diff / 86400000)
-                if (days > 0) return `${days}d ago`
-                if (hours > 0) return `${hours}h ago`
-                if (mins > 0) return `${mins}m ago`
-                return 'just now'
-              }
+      </div>
+
+      {/* Funnel + Monthly Comparison */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+        <div style={{ ...card, padding: '20px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>Conversion Funnel</h3>
+          {proposals.length === 0 ? <p style={{ fontSize: '13px', color: subColor }}>No data yet</p> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {funnelData.map((item, i) => (
+                <div key={item.stage}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: titleColor }}>{item.stage}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: item.color }}>{item.count}</span>
+                  </div>
+                  <div style={{ backgroundColor: isDark ? '#1e1e2e' : '#f1f5f9', borderRadius: '99px', height: '7px' }}>
+                    <div style={{ height: '100%', width: `${(item.count / maxCount) * 100}%`, backgroundColor: item.color, borderRadius: '99px', transition: 'width 0.5s ease' }} />
+                  </div>
+                  {i < funnelData.length - 1 && item.count > 0 && funnelData[i + 1].count > 0 && (
+                    <p style={{ fontSize: '10px', color: subColor, marginTop: '2px' }}>{Math.round((funnelData[i + 1].count / item.count) * 100)}% → {funnelData[i + 1].stage}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ ...card, padding: '20px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>This Month vs Last Month</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {[
+              { label: 'Proposals', thisMonth: thisMonthProposals.length, lastMonth: lastMonthProposals.length, format: v => v },
+              { label: 'Won Deals', thisMonth: thisMonthWon, lastMonth: lastMonthWon, format: v => v },
+              { label: 'Revenue', thisMonth: thisMonthRevenue, lastMonth: lastMonthRevenue, format: v => `${currency} ${v.toLocaleString()}` },
+              { label: 'Win Rate', thisMonth: thisMonthProposals.length > 0 ? Math.round((thisMonthWon / thisMonthProposals.length) * 100) : 0, lastMonth: lastMonthProposals.length > 0 ? Math.round((lastMonthWon / lastMonthProposals.length) * 100) : 0, format: v => `${v}%` },
+            ].map((item) => {
+              const change = item.lastMonth > 0 ? Math.round(((item.thisMonth - item.lastMonth) / item.lastMonth) * 100) : 0
+              const isUp = item.thisMonth >= item.lastMonth
               return (
-                <div key={log.id} className="flex items-center gap-3 py-2 border-b last:border-0" style={{ borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
-                  <span style={{ fontSize: '16px' }}>{icons[log.action] || '📌'}</span>
-                  <p className="text-sm flex-1" style={{ color: titleColor }}>{log.details}</p>
-                  <p className="text-xs" style={{ color: subColor }}>{timeAgo(log.timestamp)}</p>
+                <div key={item.label} style={{ padding: '12px', borderRadius: '10px', backgroundColor: isDark ? '#1e1e2e' : '#f9fafb', border: `1px solid ${border}` }}>
+                  <p style={{ fontSize: '10px', color: subColor, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</p>
+                  <p style={{ fontSize: '15px', fontWeight: '800', color: titleColor }}>{item.format(item.thisMonth)}</p>
+                  <p style={{ fontSize: '10px', color: subColor }}>vs {item.format(item.lastMonth)}</p>
+                  {item.lastMonth > 0 && <span style={{ fontSize: '10px', fontWeight: '700', color: isUp ? '#10B981' : '#EF4444' }}>{isUp ? '↑' : '↓'} {Math.abs(change)}%</span>}
                 </div>
               )
             })}
           </div>
-        )}
-      </div>
-
-      {/* Monthly Comparison */}
-      <div className="rounded-xl p-5 border mt-6" style={card}>
-        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>📅 This Month vs Last Month</h3>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { label: 'Proposals Sent', thisMonth: thisMonthProposals.length, lastMonth: lastMonthProposals.length, format: (v) => v },
-            { label: 'Won Deals', thisMonth: thisMonthWon, lastMonth: lastMonthWon, format: (v) => v },
-            { label: `Revenue (${currency})`, thisMonth: thisMonthRevenue, lastMonth: lastMonthRevenue, format: (v) => v.toLocaleString() },
-            { label: 'Win Rate', thisMonth: thisMonthProposals.length > 0 ? Math.round((thisMonthWon / thisMonthProposals.length) * 100) : 0, lastMonth: lastMonthProposals.length > 0 ? Math.round((lastMonthWon / lastMonthProposals.length) * 100) : 0, format: (v) => `${v}%` },
-          ].map((item) => {
-            const change = item.lastMonth > 0 ? Math.round(((item.thisMonth - item.lastMonth) / item.lastMonth) * 100) : 0
-            const isUp = item.thisMonth >= item.lastMonth
-            return (
-              <div key={item.label} className="rounded-xl p-4 border" style={{ backgroundColor: isDark ? '#111111' : '#F7F6F3', borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
-                <p className="text-xs mb-2" style={{ color: subColor }}>{item.label}</p>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-xl font-bold" style={{ color: titleColor }}>{item.format(item.thisMonth)}</p>
-                    <p className="text-xs" style={{ color: subColor }}>vs {item.format(item.lastMonth)} last month</p>
-                  </div>
-                  {item.lastMonth > 0 && (
-                    <span style={{
-                      fontSize: '12px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px',
-                      backgroundColor: isUp ? '#D1FAE5' : '#FEE2E2',
-                      color: isUp ? '#065F46' : '#991B1B'
-                    }}>
-                      {isUp ? '↑' : '↓'} {Math.abs(change)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
         </div>
       </div>
 
-      {/* Top Clients Leaderboard */}
-      <div className="rounded-xl p-5 border mt-6" style={card}>
-        <h3 className="font-semibold mb-4" style={{ color: titleColor }}>🏆 Top Clients by Revenue</h3>
-        {topClients.length === 0 ? (
-          <p className="text-sm" style={{ color: subColor }}>No client revenue data yet</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {topClients.map((client, index) => {
-              const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
-              const maxRevenue = topClients[0].revenue
+      {/* Activity Log */}
+      <div style={{ ...card, padding: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor }}>Activity Log</h3>
+          <button onClick={() => { clearLogs(); showToast('Activity log cleared!', 'success') }}
+            style={{ fontSize: '11px', color: subColor, background: 'none', border: `1px solid ${border}`, borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>
+            Clear All
+          </button>
+        </div>
+        {logs.length === 0 ? <p style={{ fontSize: '13px', color: subColor }}>No activity yet</p> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+            {logs.map(log => {
+              const icons = { CLIENT_ADDED: '👤', CLIENT_DELETED: '🗑️', CLIENT_UPDATED: '✏️', PROPOSAL_ADDED: '📄', PROPOSAL_DELETED: '🗑️', PROPOSAL_UPDATED: '✏️', PROPOSAL_STATUS: '🔄', FOLLOWUP_ADDED: '🔔', FOLLOWUP_DELETED: '🗑️', FOLLOWUP_UPDATED: '✏️', TEMPLATE_SAVED: '📋', COMMUNICATION_LOGGED: '📞' }
+              const timeAgo = (ts) => { const diff = Date.now() - new Date(ts).getTime(); const m = Math.floor(diff / 60000); const h = Math.floor(diff / 3600000); const d = Math.floor(diff / 86400000); return d > 0 ? `${d}d ago` : h > 0 ? `${h}h ago` : m > 0 ? `${m}m ago` : 'just now' }
               return (
-                <div key={client.id} className="flex items-center gap-3">
-                  <span style={{ fontSize: '18px', width: '24px' }}>{medals[index]}</span>
-                  <div style={{ flex: 1 }}>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium" style={{ color: titleColor }}>{client.name}</p>
-                      <p className="text-sm font-bold" style={{ color: accent }}>{currency} {client.revenue.toLocaleString()}</p>
-                    </div>
-                    <div style={{ backgroundColor: isDark ? '#2a2a2a' : '#F1F0EE', borderRadius: '99px', height: '6px', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: '99px',
-                        width: `${maxRevenue > 0 ? (client.revenue / maxRevenue) * 100 : 0}%`,
-                        background: `linear-gradient(135deg, ${accent}, #7c3aed)`,
-                        transition: 'width 0.5s ease'
-                      }} />
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: subColor }}>{client.won} won · {client.total} total proposals</p>
-                  </div>
+                <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', backgroundColor: isDark ? '#1e1e2e' : '#f9fafb' }}>
+                  <span style={{ fontSize: '14px' }}>{icons[log.action] || '📌'}</span>
+                  <p style={{ fontSize: '12px', flex: 1, color: titleColor }}>{log.details}</p>
+                  <p style={{ fontSize: '10px', color: subColor, flexShrink: 0 }}>{timeAgo(log.timestamp)}</p>
                 </div>
               )
             })}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
@@ -9,12 +10,13 @@ import { exportProposalPDF } from '../utils/exportPDF'
 import { generateInvoice } from '../utils/generateInvoice'
 import confetti from 'canvas-confetti'
 
-const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Won', 'Lost']
+const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Negotiation', 'Won', 'Lost']
 
 const STATUS_COLORS = {
   Draft: { bg: '#F1F0EE', color: '#6B6B6B' },
   Sent: { bg: '#DBEAFE', color: '#1D4ED8' },
   'In Review': { bg: '#FEF3C7', color: '#D97706' },
+  Negotiation: { bg: '#EDE9FE', color: '#6D28D9' },
   Won: { bg: '#D1FAE5', color: '#065F46' },
   Lost: { bg: '#FEE2E2', color: '#991B1B' },
 }
@@ -23,6 +25,7 @@ export default function Proposals() {
   const { proposals, addProposal, deleteProposal, updateProposal, clients, currency, templates, addTemplate, deleteTemplate } = useApp()
   const { showToast } = useToast()
   const { isDark, accent } = useTheme()
+  const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState(null)
   const [filterStatus, setFilterStatus] = useState('All')
@@ -160,7 +163,7 @@ export default function Proposals() {
           <button key={s} onClick={() => setFilterStatus(s)}
             className="px-3 py-1 rounded-full text-sm font-medium border transition-colors"
             style={filterStatus === s
-              ? { backgroundColor: '#37352F', color: '#FFFFFF', borderColor: '#37352F' }
+              ? { backgroundColor: accent, color: '#FFFFFF', borderColor: accent }
               : { backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', color: subColor, borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
             {s}
           </button>
@@ -247,7 +250,7 @@ export default function Proposals() {
             </div>
           </div>
           <div className="flex gap-3 mt-4">
-            <button onClick={handleSubmit} className="px-5 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}>{editId ? 'Update' : 'Save'}</button>
+            <button onClick={handleSubmit} className="px-5 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: accent, color: '#FFFFFF' }}>{editId ? 'Update' : 'Save'}</button>
             <button onClick={handleCancel} className="px-5 py-2 rounded-lg text-sm font-medium border" style={{ backgroundColor: 'transparent', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: subColor }}>Cancel</button>
           </div>
         </div>
@@ -257,7 +260,7 @@ export default function Proposals() {
       {filtered.length === 0 ? (
         <EmptyState icon="📄" title={search ? 'No proposals found' : 'No proposals yet'}
           description={search ? 'Try a different search term.' : 'Create your first proposal to start tracking deals.'}
-          actionLabel={search ? null : '+ New Proposal'} onAction={search ? null : () => setShowForm(true)} isDark={isDark} />
+          actionLabel={search ? null : '+ New Proposal'} onAction={search ? null : () => setShowForm(true)} isDark={isDark} accent={accent} />
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {filtered.map((proposal) => (
@@ -265,7 +268,7 @@ export default function Proposals() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h4 className="font-semibold" style={{ color: accent }}>{proposal.title}</h4>
+                    <h4 className="font-semibold" style={{ color: accent, cursor: 'pointer' }} onClick={() => navigate(`/dashboard/proposals/${proposal.id}`)}>{proposal.title}</h4>
                     <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[proposal.status].bg, color: STATUS_COLORS[proposal.status].color }}>{proposal.status}</span>
                     {proposal.priority && (
                       <span className="text-xs px-2 py-1 rounded-full font-medium" style={{

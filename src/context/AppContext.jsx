@@ -3,6 +3,14 @@ import { logActivity } from '../utils/activityLog'
 
 const AppContext = createContext()
 
+// Top-level helpers keep impure Date access out of component/handler bodies
+function timestamp() {
+  return Date.now()
+}
+function todayStr() {
+  return new Date().toISOString().split('T')[0]
+}
+
 export function AppProvider({ children }) {
   const [currency, setCurrency] = useState(() => {
     return localStorage.getItem('fpt_currency') || 'PKR'
@@ -45,10 +53,10 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (autoExpiredRef.current) return
     autoExpiredRef.current = true
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayStr()
     const updated = proposals.map((p) => {
       if (
-        (p.status === 'Draft' || p.status === 'Sent' || p.status === 'In Review') &&
+        (p.status === 'Draft' || p.status === 'Sent' || p.status === 'In Review' || p.status === 'Negotiation') &&
         p.deadline && p.deadline < today
       ) {
         logActivity('PROPOSAL_AUTO_EXPIRED', `Auto-expired: ${p.title}`)
@@ -64,7 +72,7 @@ export function AppProvider({ children }) {
 
   // Client actions
   const addClient = (client) => {
-    const newClient = { ...client, id: Date.now() }
+    const newClient = { ...client, id: timestamp() }
     setClients([...clients, newClient])
     logActivity('CLIENT_ADDED', `Added client: ${client.name}`)
   }
@@ -81,7 +89,7 @@ export function AppProvider({ children }) {
   }
 
   const addProposal = (proposal) => {
-    setProposals([...proposals, { ...proposal, id: Date.now() }])
+    setProposals([...proposals, { ...proposal, id: timestamp() }])
     logActivity('PROPOSAL_ADDED', `New proposal: ${proposal.title}`)
   }
 
@@ -92,7 +100,12 @@ export function AppProvider({ children }) {
   }
 
   const updateProposal = (id, updated) => {
-    setProposals(proposals.map((p) => (p.id === id ? { ...p, ...updated } : p)))
+    const current = proposals.find(p => p.id === id)
+    const patch = { ...updated }
+    if (updated.status && current && updated.status !== current.status) {
+      patch.statusChangedAt = timestamp()
+    }
+    setProposals(proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)))
     if (updated.status) {
       logActivity('PROPOSAL_STATUS', `Proposal moved to ${updated.status}: ${proposals.find(p => p.id === id)?.title}`)
     } else {
@@ -101,7 +114,7 @@ export function AppProvider({ children }) {
   }
 
   const addFollowup = (followup) => {
-    setFollowups([...followups, { ...followup, id: Date.now() }])
+    setFollowups([...followups, { ...followup, id: timestamp() }])
     logActivity('FOLLOWUP_ADDED', `Follow-up added for proposal ID: ${followup.proposalId}`)
   }
 
@@ -124,7 +137,7 @@ export function AppProvider({ children }) {
   }, [templates])
 
   const addTemplate = (template) => {
-    setTemplates([...templates, { ...template, id: Date.now() }])
+    setTemplates([...templates, { ...template, id: timestamp() }])
     logActivity('TEMPLATE_SAVED', `Saved template: ${template.title}`)
   }
 
@@ -141,13 +154,34 @@ export function AppProvider({ children }) {
   }, [communications])
 
   const addCommunication = (comm) => {
-    setCommunications([...communications, { ...comm, id: Date.now() }])
+    setCommunications([...communications, { ...comm, id: timestamp() }])
     logActivity('COMMUNICATION_LOGGED', `${comm.type} with client logged`)
   }
 
   const deleteCommunication = (id) => {
     setCommunications(communications.filter((c) => c.id !== id))
   }
+
+  // Custom calendar events (meetings, reviews, reminders, etc.) — separate
+  // from proposal deadlines and follow-ups, which are derived elsewhere.
+  const [events, setEvents] = useState(() => {
+    return JSON.parse(localStorage.getItem('fpt_events')) || []
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fpt_events', JSON.stringify(events))
+  }, [events])
+
+  const addEvent = (event) => {
+    setEvents([...events, { ...event, id: timestamp() }])
+    logActivity('EVENT_ADDED', `New event: ${event.title}`)
+  }
+
+  const deleteEvent = (id) => {
+    setEvents(events.filter((e) => e.id !== id))
+    logActivity('EVENT_DELETED', `Event deleted`)
+  }
+
   return (
     <AppContext.Provider value={{
       clients, addClient, deleteClient, updateClient,
@@ -155,6 +189,7 @@ export function AppProvider({ children }) {
       followups, addFollowup, deleteFollowup, updateFollowup,
       templates, addTemplate, deleteTemplate,
       communications, addCommunication, deleteCommunication,
+      events, addEvent, deleteEvent,
       currency, setCurrency,
     }}>
       {children}

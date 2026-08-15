@@ -6,7 +6,7 @@ import { useRef } from 'react'
 
 export default function Profile() {
   const navigate = useNavigate()
-  const { isDark } = useTheme()
+  const { isDark, accent } = useTheme()
   const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
   const [name, setName] = useState(session.name || '')
   const [saved, setSaved] = useState(false)
@@ -76,7 +76,7 @@ export default function Profile() {
         <div className="flex items-center gap-5 mb-6">
           <div style={{
             width: '72px', height: '72px', borderRadius: '50%',
-            background: customImage ? 'none' : 'linear-gradient(135deg, #4F46E5, #7c3aed)',
+            background: customImage ? 'none' : `linear-gradient(135deg, ${accent}, #7c3aed)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: selectedAvatar ? '40px' : '24px', fontWeight: '800',
             color: 'white', flexShrink: 0, overflow: 'hidden', cursor: 'pointer',
@@ -125,7 +125,7 @@ export default function Profile() {
         <button
           onClick={handleSave}
           className="px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ backgroundColor: saved ? '#D1FAE5' : '#37352F', color: saved ? '#065F46' : '#FFFFFF' }}
+          style={{ backgroundColor: saved ? '#D1FAE5' : accent, color: saved ? '#065F46' : '#FFFFFF' }}
         >
           {saved ? '✓ Saved!' : 'Save Changes'}
         </button>
@@ -148,7 +148,7 @@ export default function Profile() {
                   backgroundColor: isDark ? '#2a2a2a' : '#F7F6F3',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '22px', cursor: 'pointer',
-                  border: selectedAvatar === avatar ? `2px solid ${isDark ? '#ffffff' : '#37352F'}` : '2px solid transparent',
+                  border: selectedAvatar === avatar ? `2px solid ${accent}` : '2px solid transparent',
                   transition: 'all 0.2s'
                 }}
               >

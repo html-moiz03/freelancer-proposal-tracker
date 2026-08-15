@@ -7,6 +7,7 @@ const STATUS_COLORS = {
   Draft: { bg: '#F1F0EE', color: '#6B6B6B' },
   Sent: { bg: '#DBEAFE', color: '#1D4ED8' },
   'In Review': { bg: '#FEF3C7', color: '#D97706' },
+  Negotiation: { bg: '#EDE9FE', color: '#6D28D9' },
   Won: { bg: '#D1FAE5', color: '#065F46' },
   Lost: { bg: '#FEE2E2', color: '#991B1B' },
 }
@@ -37,7 +38,7 @@ export default function ClientDetail() {
     <div className="text-center py-20" style={{ color: subColor }}>
       <p className="text-4xl mb-3">👤</p>
       <p className="text-lg font-medium">Client not found</p>
-      <button onClick={() => navigate('/dashboard/clients')} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#37352F', color: '#FFFFFF' }}>
+      <button onClick={() => navigate('/dashboard/clients')} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: accent, color: '#FFFFFF' }}>
         Back to Clients
       </button>
     </div>
@@ -148,7 +149,7 @@ export default function ClientDetail() {
           }}
         />
         <button onClick={handleSaveNotes} className="mt-3 px-5 py-2 rounded-lg text-sm font-medium"
-          style={{ backgroundColor: notesSaved ? '#D1FAE5' : '#37352F', color: notesSaved ? '#065F46' : '#FFFFFF' }}>
+          style={{ backgroundColor: notesSaved ? '#D1FAE5' : accent, color: notesSaved ? '#065F46' : '#FFFFFF' }}>
           {notesSaved ? '✓ Notes Saved!' : 'Save Notes'}
         </button>
       </div>
@@ -179,7 +180,7 @@ export default function ClientDetail() {
               value={commForm.notes} onChange={(e) => setCommForm({ ...commForm, notes: e.target.value })}
               style={{ ...inputStyle, width: '100%', marginBottom: '10px', fontFamily: 'inherit' }} />
             <button onClick={handleAddComm}
-              style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#37352F', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: accent, color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
               Save
             </button>
           </div>

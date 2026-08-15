@@ -1,3 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+* {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
 @import "tailwindcss";
 
 /* Hover effects for Edit and Delete buttons */
@@ -34,4 +40,55 @@ body {
     background-color: #F7F6F3;
     color: #37352F;
     font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ---- Compact Mode ---- */
+/* Tightens spacing/typography app-wide without needing per-page rewrites,
+   since the app is built almost entirely with inline styles. */
+body.fpt-compact {
+  --fpt-scale: 0.86;
+}
+body.fpt-compact main {
+  padding: 14px !important;
+}
+body.fpt-compact table td,
+body.fpt-compact table th {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+body.fpt-compact [style*="border-radius"] {
+  letter-spacing: normal;
+}
+body.fpt-compact h1, body.fpt-compact h2, body.fpt-compact h3 {
+  margin-block: 0.35em !important;
+}
+body.fpt-compact p {
+  margin-block: 0.25em !important;
+}
+body.fpt-compact .fpt-card,
+body.fpt-compact .fpt-row,
+body.fpt-compact .fpt-list-item {
+  padding: 10px 12px !important;
+}
+body.fpt-compact button {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+/* ---- Animations toggle ---- */
+/* When off, kill all CSS transitions/animations app-wide (hover states,
+   sidebar slide-ins, toast fades, FancyButton burst, etc.) so the UI feels
+   instant/static. Individual JS-driven effects (confetti, canvas stars)
+   are separately gated in code where they exist. */
+body.fpt-no-animations *,
+body.fpt-no-animations *::before,
+body.fpt-no-animations *::after {
+  transition-duration: 0.001ms !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+body.fpt-no-animations button:hover,
+body.fpt-no-animations button:active {
+  transform: none !important;
 }
