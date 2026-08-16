@@ -8,7 +8,13 @@ A professional CRM web application built for freelancers to manage clients, trac
 
 ## 📸 Screenshots
 
-> Dashboard · Proposals · Kanban Board · Landing Page
+| Dashboard | Proposals |
+|---|---|
+| ![Dashboard](public/dashboard-preview.png) | ![Proposals](public/proposals-preview.png) |
+
+| Kanban Board | Settings |
+|---|---|
+| ![Kanban Board](public/kanban-preview.png) | ![Settings](public/settings-preview.png) |
 
 ---
 
