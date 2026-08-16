@@ -11,8 +11,8 @@ export function exportClientsCSV(clients) {
   downloadCSV(csv, 'clients.csv')
 }
 
-export function exportProposalsCSV(proposals, clients) {
-  const headers = ['Title', 'Client', 'Amount (PKR)', 'Deadline', 'Status', 'Notes']
+export function exportProposalsCSV(proposals, clients, currency = 'PKR') {
+  const headers = ['Title', 'Client', `Amount (${currency})`, 'Deadline', 'Status', 'Notes']
   const rows = proposals.map((p) => {
     const client = clients.find((c) => c.id === Number(p.clientId))
     return [

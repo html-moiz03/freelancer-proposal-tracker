@@ -4,14 +4,14 @@ import { useTheme } from '../context/ThemeContext'
 import { useApp } from '../context/AppContext'
 
 const links = [
-  { path: '/dashboard', label: 'Dashboard', icon: '🏠' },
-  { path: '/dashboard/clients', label: 'Clients', icon: '👤' },
-  { path: '/dashboard/proposals', label: 'Proposals', icon: '📄' },
-  { path: '/dashboard/followups', label: 'Follow-ups', icon: '🔔' },
-  { path: '/dashboard/kanban', label: 'Kanban', icon: '🗂️' },
-  { path: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
-  { path: '/dashboard/reports', label: 'Reports', icon: '📈' },
-  { path: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/dashboard', label: 'Dashboard', icon: '🏠', id: 'nav-dashboard' },
+  { path: '/dashboard/clients', label: 'Clients', icon: '👤', id: 'nav-clients' },
+  { path: '/dashboard/proposals', label: 'Proposals', icon: '📄', id: 'nav-proposals' },
+  { path: '/dashboard/followups', label: 'Follow-ups', icon: '🔔', id: 'nav-followups' },
+  { path: '/dashboard/kanban', label: 'Kanban', icon: '🗂️', id: 'nav-kanban' },
+  { path: '/dashboard/calendar', label: 'Calendar', icon: '📅', id: 'nav-calendar' },
+  { path: '/dashboard/reports', label: 'Reports', icon: '📈', id: 'nav-reports' },
+  { path: '/dashboard/settings', label: 'Settings', icon: '⚙️', id: 'nav-settings' },
 ]
 
 export default function Sidebar() {
@@ -62,6 +62,7 @@ export default function Sidebar() {
         {links.map((link) => (
           <NavLink
             key={link.path}
+            id={link.id}
             to={link.path}
             end={link.path === '/dashboard'}
             onClick={() => isMobile && setMobileOpen(false)}

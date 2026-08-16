@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
+import { formatDate } from '../utils/formatDate'
 
 const STATUS_COLORS = {
   Draft: { bg: '#F1F0EE', color: '#6B6B6B' },
@@ -121,7 +122,7 @@ export default function ClientDetail() {
               <div key={p.id} className="flex items-center justify-between py-3 border-b last:border-0" style={{ borderColor: isDark ? '#2a2a2a' : '#E9E9E7' }}>
                 <div>
                   <p className="text-sm font-medium" style={{ color: titleColor }}>{p.title}</p>
-                  <p className="text-xs mt-0.5" style={{ color: subColor }}>{currency} {Number(p.amount).toLocaleString()} • Deadline: {p.deadline}</p>
+                  <p className="text-xs mt-0.5" style={{ color: subColor }}>{currency} {Number(p.amount).toLocaleString()} • Deadline: {formatDate(p.deadline)}</p>
                 </div>
                 <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: STATUS_COLORS[p.status].bg, color: STATUS_COLORS[p.status].color }}>
                   {p.status}
@@ -197,7 +198,7 @@ export default function ClientDetail() {
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: '600', color: titleColor }}>{comm.type}</p>
                     {comm.notes && <p style={{ fontSize: '12px', color: subColor, marginTop: '2px' }}>{comm.notes}</p>}
-                    <p style={{ fontSize: '11px', color: subColor, marginTop: '2px' }}>{comm.date}</p>
+                    <p style={{ fontSize: '11px', color: subColor, marginTop: '2px' }}>{formatDate(comm.date)}</p>
                   </div>
                 </div>
                 <button onClick={() => deleteCommunication(comm.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '16px' }}>✕</button>

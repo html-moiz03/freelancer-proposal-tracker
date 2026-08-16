@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext'
 import { getLogs } from '../utils/activityLog'
 import { exportProposalPDF } from '../utils/exportPDF'
 import { generateInvoice } from '../utils/generateInvoice'
+import { formatDate } from '../utils/formatDate'
 
 // Simple module-level counter for local-only ids (files/messages) — avoids
 // calling impure builtins like Date.now()/Math.random() inside the component
@@ -49,7 +50,7 @@ const ACTIVITY_ICONS = {
 
 function fmtDate(d) {
   if (!d) return null
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return formatDate(d)
 }
 
 export default function ProposalDetail() {
@@ -67,6 +68,8 @@ export default function ProposalDetail() {
   const [messageInput, setMessageInput] = useState('')
   const [showFollowupForm, setShowFollowupForm] = useState(false)
   const [followupForm, setFollowupForm] = useState({ date: '', notes: '' })
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editForm, setEditForm] = useState(null)
 
   const proposal = proposals.find((p) => p.id === Number(id))
 
@@ -152,6 +155,37 @@ export default function ProposalDetail() {
     showToast('Follow-up completed!', 'success')
   }
 
+  const openEditModal = () => {
+    setEditForm({
+      title: proposal.title || '',
+      amount: proposal.amount || '',
+      deadline: proposal.deadline || '',
+      status: proposal.status || 'Draft',
+      category: proposal.category || '',
+      projectType: proposal.projectType || '',
+      timeline: proposal.timeline || '',
+      paymentTerms: proposal.paymentTerms || '',
+    })
+    setShowEditModal(true)
+  }
+
+  const handleSaveEdit = () => {
+    if (!editForm.title.trim()) { showToast('Title is required', 'error'); return }
+    if (!editForm.deadline) { showToast('Deadline is required', 'error'); return }
+    updateProposal(proposal.id, {
+      title: editForm.title.trim(),
+      amount: Number(editForm.amount) || 0,
+      deadline: editForm.deadline,
+      status: editForm.status,
+      category: editForm.category,
+      projectType: editForm.projectType,
+      timeline: editForm.timeline,
+      paymentTerms: editForm.paymentTerms,
+    })
+    setShowEditModal(false)
+    showToast('Proposal updated!', 'success')
+  }
+
   return (
     <div style={{ maxWidth: '1200px' }}>
 
@@ -164,7 +198,7 @@ export default function ProposalDetail() {
         </div>
         <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
           <button style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: cardBg, color: titleColor, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}
-            onClick={() => navigate('/dashboard/proposals')}>
+            onClick={openEditModal}>
             Edit
           </button>
           <button onClick={() => setShowMore(!showMore)} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: cardBg, color: titleColor, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -424,6 +458,75 @@ export default function ProposalDetail() {
             Save Notes
           </button>
         </div>
+      )}
+
+      {/* Edit Proposal Modal */}
+      {showEditModal && editForm && (
+        <>
+          <div onClick={() => setShowEditModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 2000 }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            zIndex: 2001, width: '92%', maxWidth: '520px', maxHeight: '85vh', overflowY: 'auto',
+            backgroundColor: cardBg, borderRadius: '16px', padding: '28px',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.25)', border: `1px solid ${border}`,
+          }}>
+            <h3 style={{ fontSize: '17px', fontWeight: '800', color: titleColor, marginBottom: '18px' }}>Edit Proposal</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Title</p>
+                <input type="text" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Amount ({currency})</p>
+                  <input type="number" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Deadline</p>
+                  <input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+              </div>
+              <div>
+                <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Status</p>
+                <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }}>
+                  {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Category</p>
+                  <input type="text" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Project Type</p>
+                  <input type="text" value={editForm.projectType} onChange={(e) => setEditForm({ ...editForm, projectType: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Timeline</p>
+                  <input type="text" value={editForm.timeline} onChange={(e) => setEditForm({ ...editForm, timeline: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '11px', color: subColor, marginBottom: '4px' }}>Payment Terms</p>
+                  <input type="text" value={editForm.paymentTerms} onChange={(e) => setEditForm({ ...editForm, paymentTerms: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: inputBg, color: titleColor, fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '22px' }}>
+              <button onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '10px 16px', borderRadius: '10px', border: `1px solid ${border}`, backgroundColor: 'transparent', color: titleColor, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={handleSaveEdit} style={{ flex: 1, padding: '10px 16px', borderRadius: '10px', border: 'none', backgroundColor: accent, color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>Save Changes</button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

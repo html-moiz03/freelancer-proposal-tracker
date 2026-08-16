@@ -51,13 +51,14 @@ export default function GlobalSearch() {
 
   return (
     <div style={{
-      position: 'fixed',
-      top: '12px',
-      left: isMobile ? '60px' : '50%',
+      position: isMobile ? 'sticky' : 'fixed',
+      top: isMobile ? 0 : '12px',
+      left: isMobile ? 'auto' : '50%',
       transform: isMobile ? 'none' : 'translateX(-50%)',
-      zIndex: 980,
-      width: isMobile ? 'calc(100% - 110px)' : '100%',
-      maxWidth: isMobile ? 'none' : '400px'
+      zIndex: isMobile ? 90 : 980,
+      width: isMobile ? '100%' : '100%',
+      maxWidth: isMobile ? 'none' : '400px',
+      marginBottom: isMobile ? '10px' : 0
     }}>
       <div
         onClick={() => { setOpen(true); inputRef.current?.focus() }}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
+import { formatDate, formatTime } from '../utils/formatDate'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -101,9 +102,8 @@ export default function CalendarPage() {
   }
 
   const fmtDateTime = (dateStr, time) => {
-    const d = new Date(dateStr)
-    const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    return time ? `${dateLabel} · ${time}` : dateLabel
+    const dateLabel = formatDate(dateStr)
+    return time ? `${dateLabel} · ${formatTime(time)}` : dateLabel
   }
 
   return (

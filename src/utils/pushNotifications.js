@@ -6,7 +6,7 @@ export async function requestNotificationPermission() {
 }
 
 export function sendNotification(title, body, icon = '/fpt-logo.png') {
-  if (Notification.permission !== 'granted') return
+  if (!('Notification' in window) || Notification.permission !== 'granted') return
   new Notification(title, { body, icon })
 }
 

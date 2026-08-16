@@ -1,5 +1,8 @@
+import { scopedKey } from './accountStorage'
+
 export function logActivity(action, details) {
-  const logs = JSON.parse(localStorage.getItem('fpt_activity') || '[]')
+  const key = scopedKey('fpt_activity')
+  const logs = JSON.parse(localStorage.getItem(key) || '[]')
   const newLog = {
     id: Date.now(),
     action,
@@ -9,13 +12,13 @@ export function logActivity(action, details) {
   logs.unshift(newLog)
   // Keep only last 50 activities
   if (logs.length > 50) logs.pop()
-  localStorage.setItem('fpt_activity', JSON.stringify(logs))
+  localStorage.setItem(key, JSON.stringify(logs))
 }
 
 export function getLogs() {
-  return JSON.parse(localStorage.getItem('fpt_activity') || '[]')
+  return JSON.parse(localStorage.getItem(scopedKey('fpt_activity')) || '[]')
 }
 
 export function clearLogs() {
-  localStorage.removeItem('fpt_activity')
+  localStorage.removeItem(scopedKey('fpt_activity'))
 }

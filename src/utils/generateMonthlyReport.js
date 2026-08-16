@@ -1,11 +1,12 @@
 import jsPDF from 'jspdf'
+import { scopedKey, getSession } from './accountStorage'
 
 export function generateMonthlyReport(clients, proposals, followups) {
   const doc = new jsPDF()
   const now = new Date()
   const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const currency = localStorage.getItem('fpt_currency') || 'PKR'
-  const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+  const currency = localStorage.getItem(scopedKey('fpt_currency')) || 'PKR'
+  const session = getSession() || {}
   const userName = session.name || 'Freelancer'
 
   // Filter this month's data

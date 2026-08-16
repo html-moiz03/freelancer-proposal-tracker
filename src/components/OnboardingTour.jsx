@@ -2,12 +2,13 @@ import { useEffect } from 'react'
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { useTheme } from '../context/ThemeContext'
+import { scopedKey } from '../utils/accountStorage'
 
 export default function OnboardingTour() {
   const { accent } = useTheme()
 
   useEffect(() => {
-    const hasSeenTour = localStorage.getItem('fpt_tour_done')
+    const hasSeenTour = localStorage.getItem(scopedKey('fpt_tour_done'))
     if (hasSeenTour) return
 
     setTimeout(() => {
@@ -80,7 +81,7 @@ export default function OnboardingTour() {
           },
         ],
         onDestroyed: () => {
-          localStorage.setItem('fpt_tour_done', 'true')
+          localStorage.setItem(scopedKey('fpt_tour_done'), 'true')
         }
       })
 

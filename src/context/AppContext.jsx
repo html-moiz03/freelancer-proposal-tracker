@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { logActivity } from '../utils/activityLog'
+import { scopedKey } from '../utils/accountStorage'
 
 const AppContext = createContext()
 
@@ -13,36 +14,36 @@ function todayStr() {
 
 export function AppProvider({ children }) {
   const [currency, setCurrency] = useState(() => {
-    return localStorage.getItem('fpt_currency') || 'PKR'
+    return localStorage.getItem(scopedKey('fpt_currency')) || 'PKR'
   })
 
   const [clients, setClients] = useState(() => {
-    return JSON.parse(localStorage.getItem('clients')) || []
+    return JSON.parse(localStorage.getItem(scopedKey('clients'))) || []
   })
 
   const [proposals, setProposals] = useState(() => {
-    return JSON.parse(localStorage.getItem('proposals')) || []
+    return JSON.parse(localStorage.getItem(scopedKey('proposals'))) || []
   })
 
   const [followups, setFollowups] = useState(() => {
-    return JSON.parse(localStorage.getItem('followups')) || []
+    return JSON.parse(localStorage.getItem(scopedKey('followups'))) || []
   })
 
   useEffect(() => {
-    localStorage.setItem('clients', JSON.stringify(clients))
+    localStorage.setItem(scopedKey('clients'), JSON.stringify(clients))
   }, [clients])
 
   useEffect(() => {
-    localStorage.setItem('proposals', JSON.stringify(proposals))
+    localStorage.setItem(scopedKey('proposals'), JSON.stringify(proposals))
   }, [proposals])
 
   useEffect(() => {
-    localStorage.setItem('followups', JSON.stringify(followups))
+    localStorage.setItem(scopedKey('followups'), JSON.stringify(followups))
   }, [followups])
 
   useEffect(() => {
     const handleStorage = () => {
-      setCurrency(localStorage.getItem('fpt_currency') || 'PKR')
+      setCurrency(localStorage.getItem(scopedKey('fpt_currency')) || 'PKR')
     }
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
@@ -129,11 +130,11 @@ export function AppProvider({ children }) {
   }
 
   const [templates, setTemplates] = useState(() => {
-    return JSON.parse(localStorage.getItem('fpt_templates')) || []
+    return JSON.parse(localStorage.getItem(scopedKey('fpt_templates'))) || []
   })
 
   useEffect(() => {
-    localStorage.setItem('fpt_templates', JSON.stringify(templates))
+    localStorage.setItem(scopedKey('fpt_templates'), JSON.stringify(templates))
   }, [templates])
 
   const addTemplate = (template) => {
@@ -146,11 +147,11 @@ export function AppProvider({ children }) {
   }
 
   const [communications, setCommunications] = useState(() => {
-    return JSON.parse(localStorage.getItem('fpt_communications')) || []
+    return JSON.parse(localStorage.getItem(scopedKey('fpt_communications'))) || []
   })
 
   useEffect(() => {
-    localStorage.setItem('fpt_communications', JSON.stringify(communications))
+    localStorage.setItem(scopedKey('fpt_communications'), JSON.stringify(communications))
   }, [communications])
 
   const addCommunication = (comm) => {
@@ -165,11 +166,11 @@ export function AppProvider({ children }) {
   // Custom calendar events (meetings, reviews, reminders, etc.) — separate
   // from proposal deadlines and follow-ups, which are derived elsewhere.
   const [events, setEvents] = useState(() => {
-    return JSON.parse(localStorage.getItem('fpt_events')) || []
+    return JSON.parse(localStorage.getItem(scopedKey('fpt_events'))) || []
   })
 
   useEffect(() => {
-    localStorage.setItem('fpt_events', JSON.stringify(events))
+    localStorage.setItem(scopedKey('fpt_events'), JSON.stringify(events))
   }, [events])
 
   const addEvent = (event) => {

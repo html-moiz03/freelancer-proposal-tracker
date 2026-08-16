@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { FaGithub, FaLinkedin, FaGoogle } from 'react-icons/fa'
 import { useRef } from 'react'
+import { getSession, setSession, upsertAccount, scopedKey, clearSession } from '../utils/accountStorage'
 
 export default function Profile() {
-  const navigate = useNavigate()
   const { isDark, accent } = useTheme()
-  const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+  const session = getSession() || {}
   const [name, setName] = useState(session.name || '')
   const [saved, setSaved] = useState(false)
 
@@ -26,24 +25,27 @@ export default function Profile() {
 
   const handleSave = () => {
     const updated = { ...session, name }
-    localStorage.setItem('fpt_session', JSON.stringify(updated))
-    localStorage.setItem('fpt_user', JSON.stringify(updated))
+    setSession(updated)
+    upsertAccount(updated)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('fpt_session')
-    navigate('/')
+    clearSession()
+    // Hard navigation so AppProvider/ThemeProvider drop the logged-out
+    // account's in-memory state instead of carrying it into whichever
+    // account logs in next.
+    window.location.href = '/'
   }
 
   const AVATARS = ['🧑‍💻', '👨‍💼', '👩‍💼', '🧑‍🎨', '👨‍🚀', '👩‍🚀', '🦸', '🧙']
 
   const [selectedAvatar, setSelectedAvatar] = useState(() => {
-    return localStorage.getItem('fpt_avatar') || ''
+    return localStorage.getItem(scopedKey('fpt_avatar')) || ''
   })
   const [customImage, setCustomImage] = useState(() => {
-    return localStorage.getItem('fpt_custom_image') || ''
+    return localStorage.getItem(scopedKey('fpt_custom_image')) || ''
   })
   const fileRef = useRef(null)
 
@@ -64,8 +66,8 @@ export default function Profile() {
           reader.onload = (ev) => {
             setCustomImage(ev.target.result)
             setSelectedAvatar('')
-            localStorage.setItem('fpt_custom_image', ev.target.result)
-            localStorage.removeItem('fpt_avatar')
+            localStorage.setItem(scopedKey('fpt_custom_image'), ev.target.result)
+            localStorage.removeItem(scopedKey('fpt_avatar'))
           }
           reader.readAsDataURL(file)
         }}
@@ -140,8 +142,8 @@ export default function Profile() {
                 onClick={() => {
                   setSelectedAvatar(avatar)
                   setCustomImage('')
-                  localStorage.setItem('fpt_avatar', avatar)
-                  localStorage.removeItem('fpt_custom_image')
+                  localStorage.setItem(scopedKey('fpt_avatar'), avatar)
+                  localStorage.removeItem(scopedKey('fpt_custom_image'))
                 }}
                 style={{
                   width: '40px', height: '40px', borderRadius: '50%',
@@ -168,8 +170,8 @@ export default function Profile() {
               onClick={() => {
                 setSelectedAvatar('')
                 setCustomImage('')
-                localStorage.removeItem('fpt_avatar')
-                localStorage.removeItem('fpt_custom_image')
+                localStorage.removeItem(scopedKey('fpt_avatar'))
+                localStorage.removeItem(scopedKey('fpt_custom_image'))
               }}
               className="ml-2 px-4 py-2 rounded-lg text-sm font-medium"
               style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}

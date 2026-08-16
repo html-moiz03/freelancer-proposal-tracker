@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
+import { findAccount, upsertAccount, getSession, setSession } from '../utils/accountStorage'
 
 function AnimatedBackground({ isDark }) {
   const canvasRef = useRef(null)
@@ -132,9 +133,10 @@ export default function Landing() {
   const [scrollProgress, setScrollProgress] = useState(0)
   const [activeTab, setActiveTab] = useState('Dashboard')
   const [openFaq, setOpenFaq] = useState(null)
+  const [legalModal, setLegalModal] = useState(null) // null | 'privacy' | 'terms'
 
   useEffect(() => {
-    const user = localStorage.getItem('fpt_session')
+    const user = getSession()
     if (user) navigate('/dashboard')
     setTimeout(() => setLogoVisible(true), 100)
     setTimeout(() => setFormVisible(true), 400)
@@ -163,21 +165,49 @@ export default function Landing() {
     const e = validate()
     if (Object.keys(e).length > 0) { setErrors(e); return }
     if (isLogin) {
-      const saved = JSON.parse(localStorage.getItem('fpt_user') || 'null')
-      if (!saved || saved.email !== form.email || saved.password !== form.password) { setErrors({ email: 'Invalid email or password' }); return }
-      localStorage.setItem('fpt_session', JSON.stringify(saved))
-      navigate('/dashboard')
+      const saved = findAccount(form.email)
+      if (!saved || saved.password !== form.password) { setErrors({ email: 'Invalid email or password' }); return }
+      setSession(saved)
+      // Hard navigation so AppProvider/ThemeProvider re-initialize their
+      // state fresh from this account's namespaced localStorage keys —
+      // a client-side route change would keep whichever account's data
+      // was already loaded into memory sitting there instead.
+      window.location.href = '/dashboard'
     } else {
-      const user = { name: form.name, email: form.email, password: form.password }
-      localStorage.setItem('fpt_user', JSON.stringify(user))
-      localStorage.setItem('fpt_session', JSON.stringify(user))
-      navigate('/dashboard')
+      if (findAccount(form.email)) { setErrors({ email: 'An account with this email already exists. Log in instead.' }); return }
+      const user = upsertAccount({ name: form.name, email: form.email, password: form.password })
+      setSession(user)
+      window.location.href = '/dashboard'
     }
   }
 
   const scrollToForm = (login) => {
     setIsLogin(login)
     setTimeout(() => document.querySelector('.form-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+  }
+
+  const SUPPORT_EMAIL = 'adc221002@myu.edu.pk'
+
+  const handleFooterLink = (link) => {
+    if (link === 'Privacy Policy') { setLegalModal('privacy'); return }
+    if (link === 'Terms of Service') { setLegalModal('terms'); return }
+    const subjects = {
+      'Report an Issue': 'Bug report',
+      'Trouble Signing In': 'Trouble signing in',
+      'Contact Support': 'Support request',
+    }
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subjects[link] || link)}`
+  }
+
+  const LEGAL_CONTENT = {
+    privacy: {
+      title: 'Privacy Policy',
+      body: 'Freelancer Proposal Tracker stores all of your data — clients, proposals, follow-ups, and preferences — locally in your browser\'s storage. Nothing is sent to or stored on a remote server. Clearing your browser data or using a different browser/device will not carry your data over. You can export a full backup at any time from Settings > Data & Export.',
+    },
+    terms: {
+      title: 'Terms of Service',
+      body: 'Freelancer Proposal Tracker is provided free of charge, as-is, for managing your own freelance business data. Since all data lives in your browser\'s local storage, you are responsible for backing it up (Settings > Data & Export) — we cannot recover lost data. By using this app you agree not to use it for unlawful purposes.',
+    },
   }
 
   const bg = isDark ? '#0f0f0f' : '#F7F6F3'
@@ -589,11 +619,27 @@ export default function Landing() {
           <div className="footer-left">© 2026 Freelancer Proposal Tracker. All rights reserved.</div>
           <div className="footer-links">
             {['Report an Issue', 'Trouble Signing In', 'Privacy Policy', 'Terms of Service', 'Contact Support'].map(link => (
-              <span key={link} className="footer-link">{link}</span>
+              <span key={link} className="footer-link" onClick={() => handleFooterLink(link)}>{link}</span>
             ))}
           </div>
         </footer>
       </div>
+
+      {legalModal && (
+        <>
+          <div onClick={() => setLegalModal(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 2000 }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            zIndex: 2001, width: '90%', maxWidth: '480px',
+            backgroundColor: cardBg, borderRadius: '16px', padding: '28px',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.25)', border: `1px solid ${borderColor}`,
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: textColor, marginBottom: '12px' }}>{LEGAL_CONTENT[legalModal].title}</h3>
+            <p style={{ fontSize: '13px', color: subColor, lineHeight: '1.7' }}>{LEGAL_CONTENT[legalModal].body}</p>
+            <button onClick={() => setLegalModal(null)} style={{ marginTop: '20px', padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #4F46E5, #7c3aed)', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>Close</button>
+          </div>
+        </>
+      )}
     </>
   )
 }

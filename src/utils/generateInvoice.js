@@ -1,9 +1,10 @@
 import jsPDF from 'jspdf'
+import { scopedKey, getSession } from './accountStorage'
 
 export function generateInvoice(proposal, client) {
   const doc = new jsPDF()
-  const currency = localStorage.getItem('fpt_currency') || 'PKR'
-  const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+  const currency = localStorage.getItem(scopedKey('fpt_currency')) || 'PKR'
+  const session = getSession() || {}
   const myName = session.name || 'Freelancer'
   const now = new Date()
   const invoiceNum = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 9000) + 1000)}`

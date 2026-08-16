@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../context/ToastContext'
 import { getLogs, clearLogs } from '../utils/activityLog'
 import { generateMonthlyReport } from '../utils/generateMonthlyReport'
+import { getSession, scopedKey } from '../utils/accountStorage'
+import { formatDate } from '../utils/formatDate'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Legend, AreaChart, Area, LineChart, Line
@@ -85,7 +87,7 @@ function StatCard({ label, value, color, change, changeLabel, isDark }) {
 }
 
 function WelcomeText({ isDark }) {
-  const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+  const session = getSession() || {}
   const name = session.name ? session.name.split(' ')[0] : 'there'
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -106,9 +108,16 @@ export default function Dashboard() {
   const { isDark, accent } = useTheme()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const [revenueGoal, setRevenueGoal] = useState(() => Number(localStorage.getItem('fpt_revenue_goal')) || 100000)
+  const [revenueGoal, setRevenueGoal] = useState(() => Number(localStorage.getItem(scopedKey('fpt_revenue_goal'))) || 100000)
   const [activityRange, setActivityRange] = useState('30D')
   const [periodFilter, setPeriodFilter] = useState('This Month')
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const today = new Date().toISOString().split('T')[0]
   const now = new Date()
@@ -124,25 +133,55 @@ export default function Dashboard() {
   const subColor = isDark ? '#64748b' : '#6b7280'
   const card = { backgroundColor: cardBg, border: `1px solid ${border}`, borderRadius: '12px' }
 
-  const totalProposals = proposals.length
-  const wonProposals = proposals.filter(p => p.status === 'Won').length
-  const winRate = totalProposals > 0 ? Math.round((wonProposals / totalProposals) * 100) : 0
-  const totalRevenue = proposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
-  const overdueFollowups = followups.filter(f => f.date < today).length
-  const inReviewRevenue = proposals.filter(p => p.status === 'In Review').reduce((sum, p) => sum + Number(p.amount), 0)
-  const forecastRevenue = Math.round(inReviewRevenue * (winRate / 100))
-  const activeProposals = proposals.filter(p => p.status === 'In Review' || p.status === 'Sent' || p.status === 'Negotiation').length
+  // Period bounds driven by the header's period filter dropdown
+  const periodYear = now.getFullYear()
+  const periodMonth = now.getMonth()
+  let periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, periodLabel, prevPeriodLabel
+  if (periodFilter === 'Last Month') {
+    periodStart = new Date(periodYear, periodMonth - 1, 1)
+    periodEnd = new Date(periodYear, periodMonth, 1)
+    prevPeriodStart = new Date(periodYear, periodMonth - 2, 1)
+    prevPeriodEnd = periodStart
+    periodLabel = 'Last Month'; prevPeriodLabel = 'month before'
+  } else if (periodFilter === 'This Quarter') {
+    const q = Math.floor(periodMonth / 3)
+    periodStart = new Date(periodYear, q * 3, 1)
+    periodEnd = new Date(periodYear, q * 3 + 3, 1)
+    prevPeriodStart = new Date(periodYear, q * 3 - 3, 1)
+    prevPeriodEnd = periodStart
+    periodLabel = 'This Quarter'; prevPeriodLabel = 'last quarter'
+  } else if (periodFilter === 'This Year') {
+    periodStart = new Date(periodYear, 0, 1)
+    periodEnd = new Date(periodYear + 1, 0, 1)
+    prevPeriodStart = new Date(periodYear - 1, 0, 1)
+    prevPeriodEnd = periodStart
+    periodLabel = 'This Year'; prevPeriodLabel = 'last year'
+  } else {
+    periodStart = new Date(periodYear, periodMonth, 1)
+    periodEnd = new Date(periodYear, periodMonth + 1, 1)
+    prevPeriodStart = new Date(periodYear, periodMonth - 1, 1)
+    prevPeriodEnd = periodStart
+    periodLabel = 'This Month'; prevPeriodLabel = 'last month'
+  }
+  const inPeriod = (p, start, end) => { const d = new Date(p.deadline); return d >= start && d < end }
+  const periodProposals = proposals.filter(p => inPeriod(p, periodStart, periodEnd))
+  const prevPeriodProposals = proposals.filter(p => inPeriod(p, prevPeriodStart, prevPeriodEnd))
 
-  const thisMonthNum = now.getMonth()
-  const thisYear = now.getFullYear()
-  const lastMonthNum = thisMonthNum === 0 ? 11 : thisMonthNum - 1
-  const lastMonthYear = thisMonthNum === 0 ? thisYear - 1 : thisYear
-  const thisMonthProposals = proposals.filter(p => { const d = new Date(p.deadline); return d.getMonth() === thisMonthNum && d.getFullYear() === thisYear })
-  const lastMonthProposals = proposals.filter(p => { const d = new Date(p.deadline); return d.getMonth() === lastMonthNum && d.getFullYear() === lastMonthYear })
-  const thisMonthRevenue = thisMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
-  const lastMonthRevenue = lastMonthProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
-  const thisMonthWon = thisMonthProposals.filter(p => p.status === 'Won').length
-  const lastMonthWon = lastMonthProposals.filter(p => p.status === 'Won').length
+  const totalProposals = periodProposals.length
+  const wonProposals = periodProposals.filter(p => p.status === 'Won').length
+  const winRate = totalProposals > 0 ? Math.round((wonProposals / totalProposals) * 100) : 0
+  const totalRevenue = periodProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+  const overdueFollowups = followups.filter(f => f.date < today).length
+  const inReviewRevenue = periodProposals.filter(p => p.status === 'In Review').reduce((sum, p) => sum + Number(p.amount), 0)
+  const forecastRevenue = Math.round(inReviewRevenue * (winRate / 100))
+  const activeProposals = periodProposals.filter(p => p.status === 'In Review' || p.status === 'Sent' || p.status === 'Negotiation').length
+
+  const thisMonthProposals = periodProposals
+  const lastMonthProposals = prevPeriodProposals
+  const thisMonthRevenue = totalRevenue
+  const lastMonthRevenue = prevPeriodProposals.filter(p => p.status === 'Won').reduce((sum, p) => sum + Number(p.amount), 0)
+  const thisMonthWon = wonProposals
+  const lastMonthWon = prevPeriodProposals.filter(p => p.status === 'Won').length
   const revenueChange = lastMonthRevenue > 0 ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0
   const wonChange = lastMonthWon > 0 ? Math.round(((thisMonthWon - lastMonthWon) / lastMonthWon) * 100) : 0
 
@@ -277,7 +316,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: attentionItems.length > 0 ? '1fr 280px' : '1fr', gap: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (attentionItems.length > 0 ? '1fr 280px' : '1fr'), gap: '20px', marginBottom: '20px' }}>
         <div>
           {/* Revenue Goal */}
           <div style={{ ...card, padding: '20px', marginBottom: '20px' }}>
@@ -295,7 +334,7 @@ export default function Dashboard() {
                   </span>
                 )}
                 <input type="number" value={revenueGoal}
-                  onChange={(e) => { setRevenueGoal(Number(e.target.value)); localStorage.setItem('fpt_revenue_goal', e.target.value) }}
+                  onChange={(e) => { setRevenueGoal(Number(e.target.value)); localStorage.setItem(scopedKey('fpt_revenue_goal'), e.target.value) }}
                   style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: isDark ? '#1e1e2e' : '#f9fafb', color: titleColor, fontSize: '13px', outline: 'none', width: '120px' }} />
               </div>
             </div>
@@ -309,17 +348,17 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Row 1 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '12px' }}>
-            <StatCard label="Revenue" value={`${currency} ${totalRevenue.toLocaleString()}`} color={accent} change={revenueChange} changeLabel="vs last month" isDark={isDark} />
-            <StatCard label="Win Rate" value={`${winRate}%`} color="#10B981" change={wonChange} changeLabel="vs last month" isDark={isDark} />
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px', marginBottom: '12px' }}>
+            <StatCard label="Revenue" value={`${currency} ${totalRevenue.toLocaleString()}`} color={accent} change={revenueChange} changeLabel={`vs ${prevPeriodLabel}`} isDark={isDark} />
+            <StatCard label="Win Rate" value={`${winRate}%`} color="#10B981" change={wonChange} changeLabel={`vs ${prevPeriodLabel}`} isDark={isDark} />
             <StatCard label="Active Proposals" value={activeProposals} color="#F59E0B" changeLabel="in pipeline" isDark={isDark} />
             <StatCard label="Overdue Follow-ups" value={overdueFollowups} color={overdueFollowups > 0 ? '#EF4444' : '#10B981'} changeLabel={overdueFollowups > 0 ? 'Needs attention' : 'All good!'} isDark={isDark} />
           </div>
 
           {/* Stats Row 2 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px' }}>
             <StatCard label="Total Clients" value={clients.length} isDark={isDark} />
-            <StatCard label="Won Proposals" value={wonProposals} change={wonChange} changeLabel="vs last month" isDark={isDark} />
+            <StatCard label="Won Proposals" value={wonProposals} change={wonChange} changeLabel={`vs ${prevPeriodLabel}`} isDark={isDark} />
             <StatCard label={`Forecast`} value={`${currency} ${forecastRevenue.toLocaleString()}`} color="#7c3aed" changeLabel="based on win rate" isDark={isDark} />
             <StatCard label="In Review Value" value={`${currency} ${inReviewRevenue.toLocaleString()}`} color="#F59E0B" isDark={isDark} />
           </div>
@@ -353,7 +392,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         <div style={{ ...card, padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, margin: 0 }}>Proposal Activity</h3>
@@ -443,7 +482,7 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         {/* Recent Proposals */}
         <div style={{ ...card, padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
@@ -479,7 +518,7 @@ export default function Dashboard() {
                     <p style={{ fontSize: '12px', fontWeight: '600', color: titleColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getProposalTitle(f.proposalId)}</p>
                     <p style={{ fontSize: '11px', color: subColor }}>{f.notes || 'No notes'}</p>
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: '600', color: accent, flexShrink: 0, marginLeft: '8px' }}>{f.date}</span>
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: accent, flexShrink: 0, marginLeft: '8px' }}>{formatDate(f.date)}</span>
                 </div>
               ))}
             </div>
@@ -515,7 +554,7 @@ export default function Dashboard() {
       </div>
 
       {/* Funnel + Monthly Comparison */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         <div style={{ ...card, padding: '20px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>Conversion Funnel</h3>
           {proposals.length === 0 ? <p style={{ fontSize: '13px', color: subColor }}>No data yet</p> : (
@@ -539,7 +578,7 @@ export default function Dashboard() {
         </div>
 
         <div style={{ ...card, padding: '20px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>This Month vs Last Month</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: '700', color: titleColor, marginBottom: '16px' }}>{periodLabel} vs {prevPeriodLabel[0].toUpperCase() + prevPeriodLabel.slice(1)}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             {[
               { label: 'Proposals', thisMonth: thisMonthProposals.length, lastMonth: lastMonthProposals.length, format: v => v },

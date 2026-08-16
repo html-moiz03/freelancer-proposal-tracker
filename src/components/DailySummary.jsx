@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
 import { useNavigate } from 'react-router-dom'
+import { scopedKey } from '../utils/accountStorage'
 
 export default function DailySummary() {
   const { proposals, followups, clients } = useApp()
@@ -13,14 +14,14 @@ export default function DailySummary() {
   const todayFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
   useEffect(() => {
-    const lastSeen = localStorage.getItem('fpt_daily_summary_date')
+    const lastSeen = localStorage.getItem(scopedKey('fpt_daily_summary_date'))
     if (lastSeen !== today) {
       setTimeout(() => setShow(true), 1500)
     }
   }, [today])
 
   const handleClose = () => {
-    localStorage.setItem('fpt_daily_summary_date', today)
+    localStorage.setItem(scopedKey('fpt_daily_summary_date'), today)
     setShow(false)
   }
 

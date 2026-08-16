@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useApp } from '../context/AppContext'
-import { generateMonthlyReport } from '../utils/generateMonthlyReport'
+import { getSession, scopedKey } from '../utils/accountStorage'
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
@@ -18,12 +18,19 @@ const PAGE_TITLES = {
 
 export default function Header() {
   const { isDark, accent } = useTheme()
-  const { clients, proposals, followups } = useApp()
+  const { proposals, followups } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const [showNotif, setShowNotif] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
-  const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const session = getSession() || {}
   const today = new Date().toISOString().split('T')[0]
   const overdueFollowups = followups.filter(f => f.date < today)
   const expiringProposals = proposals.filter(p => {
@@ -45,43 +52,28 @@ export default function Header() {
     <div style={{
       height: '60px', backgroundColor: bg, borderBottom: `1px solid ${border}`,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 24px', position: 'sticky', top: 0, zIndex: 100, flexShrink: 0
+      padding: isMobile ? '0 12px 0 56px' : '0 24px', position: 'sticky', top: 0, zIndex: 100, flexShrink: 0
     }}>
       {/* Left - Page Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <h1 style={{ fontSize: '16px', fontWeight: '700', color: textColor, margin: 0 }}>{pageTitle}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+        <h1 style={{ fontSize: '16px', fontWeight: '700', color: textColor, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pageTitle}</h1>
       </div>
 
       {/* Right - Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-
-        {/* Export Report Button */}
-        <button
-          onClick={() => generateMonthlyReport(clients, proposals, followups)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600',
-            border: `1px solid ${border}`, backgroundColor: 'transparent',
-            color: subColor, cursor: 'pointer', transition: 'all 0.15s'
-          }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? '#1e1e2e' : '#f9fafb'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-        >
-          📊 Export Report
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flexShrink: 0 }}>
 
         {/* Quick Add Button */}
         <button
           onClick={() => document.getElementById('quick-add-btn')?.click()}
           style={{
             display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '700',
+            padding: isMobile ? '7px 10px' : '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '700',
             border: 'none', background: `linear-gradient(135deg, ${accent}, #7c3aed)`,
-            color: 'white', cursor: 'pointer',
+            color: 'white', cursor: 'pointer', whiteSpace: 'nowrap',
             boxShadow: `0 2px 8px ${accent}40`
           }}
         >
-          + Quick Add
+          {isMobile ? '+ Add' : '+ Quick Add'}
         </button>
 
         {/* Notification Bell */}
@@ -89,10 +81,10 @@ export default function Header() {
           <button
             onClick={() => setShowNotif(!showNotif)}
             style={{
-              width: '36px', height: '36px', borderRadius: '8px',
+              width: isMobile ? '32px' : '36px', height: isMobile ? '32px' : '36px', borderRadius: '8px',
               border: `1px solid ${border}`, backgroundColor: 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', fontSize: '16px', position: 'relative', color: textColor
+              cursor: 'pointer', fontSize: '16px', position: 'relative', color: textColor, flexShrink: 0
             }}
           >
             🔔
@@ -164,8 +156,8 @@ export default function Header() {
           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
         >
           {(() => {
-            const customImage = localStorage.getItem('fpt_custom_image')
-            const avatar = localStorage.getItem('fpt_avatar')
+            const customImage = localStorage.getItem(scopedKey('fpt_custom_image'))
+            const avatar = localStorage.getItem(scopedKey('fpt_avatar'))
             const initials = session.name ? session.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'FP'
             return (
               <div style={{
@@ -180,10 +172,12 @@ export default function Header() {
               </div>
             )
           })()}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: textColor }}>{session.name?.split(' ')[0] || 'User'}</span>
-            <span style={{ fontSize: '10px', color: subColor }}>Freelancer</span>
-          </div>
+          {!isMobile && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: textColor }}>{session.name?.split(' ')[0] || 'User'}</span>
+              <span style={{ fontSize: '10px', color: subColor }}>Freelancer</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { formatDate } from '../utils/formatDate'
+import { scopedKey } from '../utils/accountStorage'
 import confetti from 'canvas-confetti'
 
 const COLUMNS = ['Draft', 'Sent', 'In Review', 'Negotiation', 'Won', 'Lost']
@@ -29,8 +31,10 @@ const EMPTY_FORM = { title: '', clientId: '', amount: '', deadline: '', status: 
 
 function fmtDate(ts) {
   if (!ts) return null
-  const d = typeof ts === 'number' ? new Date(ts) : new Date(ts)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  // ts is either an epoch ms timestamp (statusChangedAt) or a 'YYYY-MM-DD'
+  // deadline string — normalize to an ISO date string before formatting.
+  const iso = typeof ts === 'number' ? new Date(ts).toISOString() : ts
+  return formatDate(iso)
 }
 
 export default function Kanban() {
@@ -43,6 +47,16 @@ export default function Kanban() {
   const [modalStatus, setModalStatus] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
+  const [showCustomize, setShowCustomize] = useState(false)
+  const [compactCards, setCompactCards] = useState(() => localStorage.getItem(scopedKey('fpt_kanban_compact')) === 'true')
+
+  const toggleCompactCards = () => {
+    setCompactCards(prev => {
+      const next = !prev
+      localStorage.setItem(scopedKey('fpt_kanban_compact'), String(next))
+      return next
+    })
+  }
 
   const titleColor = isDark ? '#ffffff' : '#111827'
   const subColor = isDark ? '#64748b' : '#6b7280'
@@ -111,15 +125,10 @@ export default function Kanban() {
           border: `1px solid ${pageBorder}`, backgroundColor: cardBg, color: titleColor,
           fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit'
         }}>⏷ Filter{clientFilter ? ` · ${getClient(clientFilter)?.name || ''}` : ''}</button>
-        <button style={{
+        <button onClick={() => setShowCustomize(!showCustomize)} style={{
           display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px',
           border: `1px solid ${pageBorder}`, backgroundColor: cardBg, color: titleColor,
-          fontSize: '12px', fontWeight: '600', cursor: 'default', fontFamily: 'inherit'
-        }}>📊 Group by: Status</button>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px',
-          border: `1px solid ${pageBorder}`, backgroundColor: cardBg, color: titleColor,
-          fontSize: '12px', fontWeight: '600', cursor: 'default', fontFamily: 'inherit'
+          fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit'
         }}>⚙ Customize</button>
 
         {showFilter && (
@@ -135,6 +144,30 @@ export default function Kanban() {
               {clients.map((c) => (
                 <button key={c.id} onClick={() => { setClientFilter(String(c.id)); setShowFilter(false) }} style={{ display: 'block', width: '100%', padding: '8px 10px', border: 'none', background: clientFilter === String(c.id) ? (isDark ? accent + '22' : accent + '14') : 'none', textAlign: 'left', fontSize: '12px', color: clientFilter === String(c.id) ? accent : titleColor, cursor: 'pointer', fontFamily: 'inherit', borderRadius: '6px' }}>{c.name}</button>
               ))}
+            </div>
+          </>
+        )}
+
+        {showCustomize && (
+          <>
+            <div onClick={() => setShowCustomize(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
+            <div style={{
+              position: 'absolute', top: '38px', left: '96px', zIndex: 99, width: '200px',
+              backgroundColor: cardBg, border: `1px solid ${pageBorder}`, borderRadius: '10px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '10px'
+            }}>
+              <p style={{ fontSize: '11px', fontWeight: '700', color: subColor, marginBottom: '8px', textTransform: 'uppercase' }}>Card display</p>
+              <div onClick={toggleCompactCards} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer' }}>
+                <span style={{ fontSize: '12px', color: titleColor }}>Compact cards</span>
+                <div style={{
+                  width: '32px', height: '18px', borderRadius: '99px',
+                  backgroundColor: compactCards ? accent : (isDark ? '#2a2a3e' : '#E5E7EB'),
+                  position: 'relative', transition: 'background-color 0.2s', flexShrink: 0
+                }}>
+                  <div style={{ width: '14px', height: '14px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: compactCards ? '16px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </div>
+              </div>
+              <p style={{ fontSize: '10px', color: subColor, padding: '2px 10px 4px' }}>Hides the status/deadline line on each card.</p>
             </div>
           </>
         )}
@@ -178,7 +211,7 @@ export default function Kanban() {
                       {colProposals.map((proposal, index) => {
                         const client = getClient(proposal.clientId)
                         const statusDate = proposal.status === 'Draft'
-                          ? (proposal.deadline ? new Date(proposal.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null)
+                          ? (proposal.deadline ? formatDate(proposal.deadline) : null)
                           : fmtDate(proposal.statusChangedAt || proposal.id)
                         const metaLine = statusDate ? STATUS_LINE[proposal.status](statusDate) : null
 
@@ -193,17 +226,17 @@ export default function Kanban() {
                                   backgroundColor: cardBg,
                                   border: `1px solid ${cardBorder}`,
                                   borderRadius: '10px',
-                                  padding: '12px',
-                                  marginBottom: '10px',
+                                  padding: compactCards ? '8px 12px' : '12px',
+                                  marginBottom: compactCards ? '6px' : '10px',
                                   boxShadow: dragSnapshot.isDragging ? '0 8px 24px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.04)',
                                   cursor: 'grab',
                                   ...dragProvided.draggableProps.style,
                                 }}
                               >
-                                <p style={{ fontSize: '13px', fontWeight: '700', color: titleColor, marginBottom: '4px', lineHeight: '1.3' }}>{proposal.title}</p>
-                                <p style={{ fontSize: '11px', color: subColor, marginBottom: '3px' }}>{client?.name || 'Unknown'}</p>
-                                <p style={{ fontSize: '11px', fontWeight: '600', color: titleColor, marginBottom: '3px' }}>{currency} {Number(proposal.amount).toLocaleString()}</p>
-                                {metaLine && <p style={{ fontSize: '10px', color: colColors.text, marginTop: '6px' }}>{metaLine}</p>}
+                                <p style={{ fontSize: '13px', fontWeight: '700', color: titleColor, marginBottom: compactCards ? 0 : '4px', lineHeight: '1.3' }}>{proposal.title}</p>
+                                {!compactCards && <p style={{ fontSize: '11px', color: subColor, marginBottom: '3px' }}>{client?.name || 'Unknown'}</p>}
+                                <p style={{ fontSize: '11px', fontWeight: '600', color: titleColor, marginBottom: 0 }}>{currency} {Number(proposal.amount).toLocaleString()}</p>
+                                {!compactCards && metaLine && <p style={{ fontSize: '10px', color: colColors.text, marginTop: '6px' }}>{metaLine}</p>}
                               </div>
                             )}
                           </Draggable>

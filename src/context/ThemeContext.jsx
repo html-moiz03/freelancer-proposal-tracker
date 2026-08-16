@@ -1,37 +1,41 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { scopedKey } from '../utils/accountStorage'
 
 const ThemeContext = createContext()
 
 export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('fpt_theme') === 'dark'
+    return localStorage.getItem(scopedKey('fpt_theme')) === 'dark'
   })
 
   const [accent, setAccent] = useState(() => {
-    return localStorage.getItem('fpt_accent') || '#4F46E5'
+    return localStorage.getItem(scopedKey('fpt_accent')) || '#4F46E5'
   })
 
   const [compactMode, setCompactMode] = useState(() => {
-    return localStorage.getItem('fpt_compact_mode') === 'true'
+    return localStorage.getItem(scopedKey('fpt_compact_mode')) === 'true'
   })
 
   const [animations, setAnimations] = useState(() => {
-    return localStorage.getItem('fpt_animations') !== 'false'
+    return localStorage.getItem(scopedKey('fpt_animations')) !== 'false'
   })
 
   useEffect(() => {
-    localStorage.setItem('fpt_theme', isDark ? 'dark' : 'light')
+    localStorage.setItem(scopedKey('fpt_theme'), isDark ? 'dark' : 'light')
     document.body.style.backgroundColor = isDark ? '#1a1a2e' : '#F7F6F3'
     document.body.style.color = isDark ? '#e2e8f0' : '#37352F'
+    // Lets index.css target dark mode for things inline styles can't reach,
+    // like the native browser icon inside <input type="date"/"time">.
+    document.body.classList.toggle('fpt-dark', isDark)
   }, [isDark])
 
   useEffect(() => {
-    localStorage.setItem('fpt_compact_mode', String(compactMode))
+    localStorage.setItem(scopedKey('fpt_compact_mode'), String(compactMode))
     document.body.classList.toggle('fpt-compact', compactMode)
   }, [compactMode])
 
   useEffect(() => {
-    localStorage.setItem('fpt_animations', String(animations))
+    localStorage.setItem(scopedKey('fpt_animations'), String(animations))
     document.body.classList.toggle('fpt-no-animations', !animations)
   }, [animations])
 
@@ -39,7 +43,7 @@ export function ThemeProvider({ children }) {
 
   const updateAccent = (color) => {
     setAccent(color)
-    localStorage.setItem('fpt_accent', color)
+    localStorage.setItem(scopedKey('fpt_accent'), color)
   }
 
   const toggleCompactMode = () => setCompactMode(prev => !prev)

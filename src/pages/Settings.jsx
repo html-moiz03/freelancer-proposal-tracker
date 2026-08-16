@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
 import { useApp } from '../context/AppContext'
 import { requestNotificationPermission, checkAndNotify } from '../utils/pushNotifications'
 import { FaGithub, FaLinkedin, FaGoogle } from 'react-icons/fa'
+import { getSession, setSession, upsertAccount, removeAccount, clearAccountData, currentAccountId, scopedKey, clearSession } from '../utils/accountStorage'
 
 // Top-level helper keeps the impure Date access out of the component/handler body
 function nowISO() {
@@ -48,33 +48,42 @@ function Toggle({ checked, onChange, isDark, accent }) {
 // Estimate the app's own footprint in localStorage (not the whole browser quota)
 function estimateStorageBytes() {
   const keys = ['clients', 'proposals', 'followups', 'fpt_templates', 'fpt_communications', 'fpt_events', 'fpt_activity']
-  return keys.reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0)
+  return keys.reduce((sum, k) => sum + (localStorage.getItem(scopedKey(k))?.length || 0), 0)
 }
 
 export default function Settings() {
   const { isDark, toggleTheme, updateAccent, accent, compactMode, toggleCompactMode, animations, toggleAnimations } = useTheme()
   const { showToast } = useToast()
   const { clients, proposals, followups, setCurrency } = useApp()
-  const navigate = useNavigate()
 
-  const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+  const session = getSession() || {}
 
   const [tab, setTab] = useState('Profile')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [onWaitlist, setOnWaitlist] = useState(() => localStorage.getItem(scopedKey('fpt_pro_waitlist')) === 'true')
   const [name, setName] = useState(session.name || '')
-  const [bio, setBio] = useState(localStorage.getItem('fpt_bio') || '')
-  const [timezone, setTimezone] = useState(localStorage.getItem('fpt_timezone') || TIMEZONES[0])
-  const [customImage, setCustomImage] = useState(() => localStorage.getItem('fpt_settings_photo') || '')
+  const [bio, setBio] = useState(localStorage.getItem(scopedKey('fpt_bio')) || '')
+  const [timezone, setTimezone] = useState(localStorage.getItem(scopedKey('fpt_timezone')) || TIMEZONES[0])
+  const [customImage, setCustomImage] = useState(() => localStorage.getItem(scopedKey('fpt_settings_photo')) || '')
   const fileRef = useRef(null)
 
-  const [currencyState, setCurrencyState] = useState(localStorage.getItem('fpt_currency') || 'PKR')
-  const [dateFormat, setDateFormat] = useState(localStorage.getItem('fpt_date_format') || 'YYYY-MM-DD')
-  const [timeFormat, setTimeFormat] = useState(localStorage.getItem('fpt_time_format') || '12h')
-  const [language, setLanguage] = useState(localStorage.getItem('fpt_language') || 'English')
+  // Falls back to whatever avatar/photo was picked on the Profile page so
+  // the two stay visually in sync by default. A photo uploaded here still
+  // takes priority and won't get overwritten by later Profile page edits.
+  const profileCustomImage = localStorage.getItem(scopedKey('fpt_custom_image')) || ''
+  const profileAvatarEmoji = localStorage.getItem(scopedKey('fpt_avatar')) || ''
+  const displayImage = customImage || profileCustomImage
+  const displayEmoji = !displayImage ? profileAvatarEmoji : ''
+
+  const [currencyState, setCurrencyState] = useState(localStorage.getItem(scopedKey('fpt_currency')) || 'PKR')
+  const [dateFormat, setDateFormat] = useState(localStorage.getItem(scopedKey('fpt_date_format')) || 'YYYY-MM-DD')
+  const [timeFormat, setTimeFormat] = useState(localStorage.getItem(scopedKey('fpt_time_format')) || '12h')
+  const [language, setLanguage] = useState(localStorage.getItem(scopedKey('fpt_language')) || 'English')
 
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [notifEnabled, setNotifEnabled] = useState(Notification.permission === 'granted')
+  const [notifEnabled, setNotifEnabled] = useState(() => 'Notification' in window && Notification.permission === 'granted')
 
   const cardBg = isDark ? '#111118' : '#ffffff'
   const border = isDark ? '#1e1e2e' : '#f0f0f0'
@@ -89,18 +98,18 @@ export default function Settings() {
 
   const saveProfile = () => {
     const updated = { ...session, name }
-    localStorage.setItem('fpt_session', JSON.stringify(updated))
-    localStorage.setItem('fpt_user', JSON.stringify(updated))
-    localStorage.setItem('fpt_bio', bio)
-    localStorage.setItem('fpt_timezone', timezone)
+    setSession(updated)
+    upsertAccount(updated)
+    localStorage.setItem(scopedKey('fpt_bio'), bio)
+    localStorage.setItem(scopedKey('fpt_timezone'), timezone)
     showToast('Profile saved!', 'success')
   }
 
   const savePreferences = () => {
-    localStorage.setItem('fpt_currency', currencyState)
-    localStorage.setItem('fpt_date_format', dateFormat)
-    localStorage.setItem('fpt_time_format', timeFormat)
-    localStorage.setItem('fpt_language', language)
+    localStorage.setItem(scopedKey('fpt_currency'), currencyState)
+    localStorage.setItem(scopedKey('fpt_date_format'), dateFormat)
+    localStorage.setItem(scopedKey('fpt_time_format'), timeFormat)
+    localStorage.setItem(scopedKey('fpt_language'), language)
     setCurrency(currencyState)
     showToast('Preferences saved!', 'success')
   }
@@ -110,14 +119,20 @@ export default function Settings() {
     showToast('Accent color updated!', 'success')
   }
 
+  const joinProWaitlist = () => {
+    localStorage.setItem(scopedKey('fpt_pro_waitlist'), 'true')
+    setOnWaitlist(true)
+    showToast("You're on the Pro waitlist — we'll email you when it's ready!", 'success')
+    setShowUpgradeModal(false)
+  }
+
   const changePassword = () => {
-    const user = JSON.parse(localStorage.getItem('fpt_user') || '{}')
-    if (oldPassword !== user.password) { showToast('Current password is incorrect!', 'error'); return }
+    if (oldPassword !== session.password) { showToast('Current password is incorrect!', 'error'); return }
     if (newPassword.length < 6) { showToast('New password must be at least 6 characters!', 'error'); return }
     if (newPassword !== confirmPassword) { showToast('Passwords do not match!', 'error'); return }
-    const updated = { ...user, password: newPassword }
-    localStorage.setItem('fpt_user', JSON.stringify(updated))
-    localStorage.setItem('fpt_session', JSON.stringify(updated))
+    const updated = { ...session, password: newPassword }
+    upsertAccount(updated)
+    setSession(updated)
     setOldPassword(''); setNewPassword(''); setConfirmPassword('')
     showToast('Password changed successfully!', 'success')
   }
@@ -142,9 +157,9 @@ export default function Settings() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result)
-        if (data.clients) localStorage.setItem('clients', JSON.stringify(data.clients))
-        if (data.proposals) localStorage.setItem('proposals', JSON.stringify(data.proposals))
-        if (data.followups) localStorage.setItem('followups', JSON.stringify(data.followups))
+        if (data.clients) localStorage.setItem(scopedKey('clients'), JSON.stringify(data.clients))
+        if (data.proposals) localStorage.setItem(scopedKey('proposals'), JSON.stringify(data.proposals))
+        if (data.followups) localStorage.setItem(scopedKey('followups'), JSON.stringify(data.followups))
         showToast('Data imported! Refresh to see changes.', 'success')
       } catch {
         showToast('Invalid JSON file!', 'error')
@@ -155,9 +170,9 @@ export default function Settings() {
 
   const resetApp = () => {
     if (window.confirm('Are you sure? This will delete ALL your data permanently!')) {
-      localStorage.removeItem('clients')
-      localStorage.removeItem('proposals')
-      localStorage.removeItem('followups')
+      localStorage.removeItem(scopedKey('clients'))
+      localStorage.removeItem(scopedKey('proposals'))
+      localStorage.removeItem(scopedKey('followups'))
       showToast('All data cleared!', 'error')
       window.location.reload()
     }
@@ -165,8 +180,12 @@ export default function Settings() {
 
   const deleteAccount = () => {
     if (window.confirm('This permanently deletes your account and all data. Continue?')) {
-      localStorage.clear()
-      navigate('/')
+      // Only wipe this account's own namespaced data + its account record,
+      // so other accounts saved in this browser are left untouched.
+      clearAccountData(currentAccountId())
+      if (session.email) removeAccount(session.email)
+      clearSession()
+      window.location.href = '/'
     }
   }
 
@@ -213,17 +232,17 @@ export default function Settings() {
                   const file = e.target.files[0]
                   if (!file) return
                   const reader = new FileReader()
-                  reader.onload = (ev) => { setCustomImage(ev.target.result); localStorage.setItem('fpt_settings_photo', ev.target.result) }
+                  reader.onload = (ev) => { setCustomImage(ev.target.result); localStorage.setItem(scopedKey('fpt_settings_photo'), ev.target.result) }
                   reader.readAsDataURL(file)
                 }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
                 <div style={{
                   width: '64px', height: '64px', borderRadius: '50%',
-                  background: customImage ? 'none' : `linear-gradient(135deg, ${accent}, #7c3aed)`,
+                  background: displayImage ? 'none' : `linear-gradient(135deg, ${accent}, #7c3aed)`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '22px', fontWeight: '800', color: 'white', overflow: 'hidden', flexShrink: 0
+                  fontSize: displayEmoji ? '32px' : '22px', fontWeight: '800', color: 'white', overflow: 'hidden', flexShrink: 0
                 }}>
-                  {customImage ? <img src={customImage} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+                  {displayImage ? <img src={displayImage} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : displayEmoji ? displayEmoji : initials}
                 </div>
                 <button onClick={() => fileRef.current.click()} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${border}`, backgroundColor: 'transparent', color: titleColor, fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Change Photo</button>
               </div>
@@ -308,7 +327,7 @@ export default function Settings() {
                   <p style={{ fontSize: '13px', fontWeight: '700', color: titleColor, margin: 0 }}>Free Plan</p>
                   <p style={{ fontSize: '12px', color: subColor, marginTop: '2px' }}>Up to {proposalsLimit} tracked proposals</p>
                 </div>
-                <button onClick={() => showToast('Upgrade flow coming soon!', 'success')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: accent, color: 'white', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>Upgrade to Pro</button>
+                <button onClick={() => setShowUpgradeModal(true)} disabled={onWaitlist} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: onWaitlist ? (isDark ? '#1e1e2e' : '#F1F0EE') : accent, color: onWaitlist ? subColor : 'white', fontSize: '12px', fontWeight: '700', cursor: onWaitlist ? 'default' : 'pointer', fontFamily: 'inherit' }}>{onWaitlist ? '✓ On Waitlist' : 'Upgrade to Pro'}</button>
               </div>
               <p style={{ fontSize: '12px', color: subColor }}>No billing history yet — you're on the free plan.</p>
             </>
@@ -438,9 +457,10 @@ export default function Settings() {
           </div>
           <div>
             <label style={labelStyle}>Language</label>
-            <select style={inputStyle} value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <select style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} value={language} onChange={(e) => setLanguage(e.target.value)} disabled title="More languages coming soon">
               <option value="English">English</option>
             </select>
+            <p style={{ fontSize: '11px', color: subColor, marginTop: '4px' }}>More languages coming soon.</p>
           </div>
         </div>
 
@@ -483,6 +503,27 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {showUpgradeModal && (
+        <>
+          <div onClick={() => setShowUpgradeModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 2000 }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            zIndex: 2001, width: '90%', maxWidth: '420px',
+            backgroundColor: cardBg, borderRadius: '16px', padding: '28px',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.25)', border: `1px solid ${border}`,
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: titleColor, marginBottom: '10px' }}>🚀 Pro plan is coming soon</h3>
+            <p style={{ fontSize: '13px', color: subColor, lineHeight: '1.7', margin: 0 }}>
+              We're still building Pro features. Join the waitlist and we'll email you the moment it's ready.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => setShowUpgradeModal(false)} style={{ flex: 1, padding: '10px 16px', borderRadius: '10px', border: `1px solid ${border}`, backgroundColor: 'transparent', color: titleColor, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Maybe later</button>
+              <button onClick={joinProWaitlist} style={{ flex: 1, padding: '10px 16px', borderRadius: '10px', border: 'none', backgroundColor: accent, color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>Join Waitlist</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

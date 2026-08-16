@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext'
 import { useTheme } from '../context/ThemeContext'
 import FancyButton from '../components/FancyButton'
 import EmptyState from '../components/EmptyState'
+import { formatDate } from '../utils/formatDate'
 
 // Top-level helpers keep impure Date access out of the component body itself
 function todayStr() {
@@ -143,10 +144,7 @@ export default function Followups() {
     return { label, date: lastDate }
   }
 
-  const fmtDate = (dateStr) => {
-    if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
+  const fmtDate = (dateStr) => formatDate(dateStr)
 
   // Enrich every followup with derived display data
   const enriched = followups.map((f) => {

@@ -8,6 +8,8 @@ import EmptyState from '../components/EmptyState'
 import { exportProposalsCSV } from '../utils/exportCSV'
 import { exportProposalPDF } from '../utils/exportPDF'
 import { generateInvoice } from '../utils/generateInvoice'
+import { getSession, scopedKey } from '../utils/accountStorage'
+import { formatDate } from '../utils/formatDate'
 import confetti from 'canvas-confetti'
 
 const STATUS_OPTIONS = ['Draft', 'Sent', 'In Review', 'Negotiation', 'Won', 'Lost']
@@ -95,9 +97,9 @@ export default function Proposals() {
   const generateEmail = (proposal) => {
     const client = clients.find((c) => c.id === Number(proposal.clientId))
     const clientName = client ? client.name.split(' ')[0] : 'there'
-    const session = JSON.parse(localStorage.getItem('fpt_session') || '{}')
+    const session = getSession() || {}
     const myName = session.name || 'Freelancer'
-    const curr = localStorage.getItem('fpt_currency') || 'PKR'
+    const curr = localStorage.getItem(scopedKey('fpt_currency')) || 'PKR'
     const templates = {
       Draft: `Subject: Proposal for ${proposal.title}\n\nHi ${clientName},\n\nI hope you're doing well! I wanted to reach out regarding the proposal I've been preparing for ${proposal.title}.\n\nI've put together a comprehensive plan that I believe will perfectly meet your needs. The total investment for this project is ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nI'd love to schedule a quick call to walk you through the details.\n\nLooking forward to hearing from you!\n\nBest regards,\n${myName}`,
       Sent: `Subject: Following up on ${proposal.title} Proposal\n\nHi ${clientName},\n\nI hope this message finds you well! I wanted to follow up on the proposal I sent you for ${proposal.title}.\n\nThe proposal outlines everything we discussed, with a total investment of ${curr} ${Number(proposal.amount).toLocaleString()}.\n\nPlease let me know if you have any questions.\n\nLooking forward to your feedback!\n\nBest regards,\n${myName}`,
@@ -142,7 +144,7 @@ export default function Proposals() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: titleColor }}>Proposals</h2>
         <div className="flex gap-2 items-center">
-          <button onClick={() => { exportProposalsCSV(proposals, clients); showToast('Proposals exported!', 'success') }}
+          <button onClick={() => { exportProposalsCSV(proposals, clients, currency); showToast('Proposals exported!', 'success') }}
             className="px-3 py-2 rounded-lg text-sm font-medium border"
             style={{ backgroundColor: isDark ? '#1a1a1a' : '#FFFFFF', borderColor: isDark ? '#2a2a2a' : '#E9E9E7', color: titleColor }}>
             📥 Export CSV
@@ -292,7 +294,7 @@ export default function Proposals() {
                     })()}
                   </div>
                   <p className="text-sm" style={{ color: subColor }}>{getClientName(proposal.clientId)} • {currency} {Number(proposal.amount).toLocaleString()}</p>
-                  <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {proposal.deadline}</p>
+                  <p className="text-xs mt-1" style={{ color: subColor }}>Deadline: {formatDate(proposal.deadline)}</p>
                   {proposal.notes && <p className="text-xs mt-1" style={{ color: subColor }}>{proposal.notes}</p>}
                   {proposal.tags && proposal.tags.length > 0 && (
                     <div className="flex gap-1 flex-wrap mt-2">

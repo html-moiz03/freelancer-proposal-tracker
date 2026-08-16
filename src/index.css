@@ -92,3 +92,16 @@ body.fpt-no-animations button:hover,
 body.fpt-no-animations button:active {
   transform: none !important;
 }
+
+/* ---- Dark mode: native <input type="date"/"time"> icon ---- */
+/* The browser draws its own calendar/clock icon inside these inputs. Telling
+   the input color-scheme: dark makes Chromium/Edge/Firefox draw that icon in
+   light/white instead of its default dark glyph, so it stays visible against
+   our dark-mode input backgrounds. (Do NOT also filter:invert() the
+   ::-webkit-calendar-picker-indicator here — color-scheme already lightens
+   the icon, so inverting it again flips it back to dark-on-dark.) */
+body.fpt-dark input[type="date"],
+body.fpt-dark input[type="time"],
+body.fpt-dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
